@@ -436,7 +436,7 @@ function addB(label,color,bg,onClick){const d=E('div','btn-add');d.style.cssText
 function secHd(title,bg,color,total){
   return mkRow([
     {grow:true,bg,node:(()=>{const d=E('div');d.style.cssText=`padding:3px 8px;font-size:12px;font-weight:700;color:${color};`;d.textContent=title;return d;})()},
-    {w:90,bg,node:valD(fmt(total),{bold:true,color})},
+    {w:90,bg,node:(()=>{const d=E('div','val');d.style.fontWeight='700';d.style.color=color;d.style.justifyContent='flex-start';d.textContent=fmt(total);return d;})()},,
   ],'2px solid #9E9E9E');
 }
 
