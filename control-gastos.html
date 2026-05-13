@@ -76,6 +76,28 @@ const MV=()=>({
 });
 
 const ST={};
+// Historial para deshacer (últimos 10 cambios)
+const HISTORY=[];
+const MAX_HISTORY=10;
+function pushHistory(){
+  try{
+    const snap=JSON.stringify(ST[`${anio}_${mesIdx}`]??MV());
+    HISTORY.push({anio,mesIdx,data:snap});
+    if(HISTORY.length>MAX_HISTORY)HISTORY.shift();
+  }catch(e){}
+}
+function undoLast(){
+  if(HISTORY.length===0){toast('⚠ No hay cambios para deshacer','#7F4F00');return;}
+  const last=HISTORY.pop();
+  try{
+    const data=JSON.parse(last.data);
+    sST(last.anio,last.mesIdx,data);
+    lSave(last.anio,last.mesIdx);
+    dDebounce();
+    render();
+    toast('✓ Cambio deshecho','#217346');
+  }catch(e){toast('⚠ Error al deshacer','#7F4F00');}
+}
 // Recordar último período abierto
 let _lastPeriod={anio:2026,mes:new Date().getMonth()};
 try{const lp=localStorage.getItem('lastPeriod');if(lp){const p=JSON.parse(lp);_lastPeriod=p;}}catch(e){}
@@ -83,7 +105,7 @@ let anio=_lastPeriod.anio,mesIdx=_lastPeriod.mes,driveFileId=null,driveReady=fal
 const gST=(a,m)=>ST[`${a}_${m}`]??null;
 const sST=(a,m,d)=>{ST[`${a}_${m}`]=d;};
 const gM=()=>gST(anio,mesIdx)??MV();
-function sM(fn){const c=gM(),n=typeof fn==="function"?fn(c):fn;sST(anio,mesIdx,n);ST[`__ts_${anio}_${mesIdx}`]=Date.now();lSave(anio,mesIdx);dDebounce();render();}
+function sM(fn){pushHistory();const c=gM(),n=typeof fn==="function"?fn(c):fn;sST(anio,mesIdx,n);ST[`__ts_${anio}_${mesIdx}`]=Date.now();lSave(anio,mesIdx);dDebounce();render();}
 
 const lKey=(a,m)=>`gastos_${VER}_${a}_${m}`;
 function lSave(a,m){const d=ST[`${a}_${m}`];if(d)try{localStorage.setItem(lKey(a,m),JSON.stringify(d));}catch(e){}}
@@ -118,6 +140,8 @@ function updateDriveBar(){
   }
   const dl=document.createElement('button');dl.className='gbtn navy';
   dl.textContent='⬇ CSV';dl.onclick=dlCSV;gb.appendChild(dl);
+  const ub=document.createElement('button');ub.className='gbtn';
+  ub.style.background='#7F6000';ub.textContent='↩ Deshacer';ub.onclick=undoLast;gb.appendChild(ub);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
@@ -615,14 +639,14 @@ function render(){
         tbl.appendChild(mkRow([
           {w:24,bg:rbg,node:E('div')},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
-          {w:90,bg:rbg,node:mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`,color:prop?'#A07050':'#000'})},
+          {w:90,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=fmt(g.importe);return d;})():mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`})},
           ...(isSAN?[
             {w:58,bg:rbg,node:prop?E('div'):mkCell(g.usd||'',v=>{uG(ti,gi,'usd',Number(v)||0);if(Number(v)>0&&Number(g.tc)>0)setTimeout(()=>calcUSD(v,g.tc),50);},{type:'number',placeholder:'USD',celda:`tg${ti}-${gi}usd`})},
             {w:68,bg:rbg,node:prop?E('div'):mkCell(g.tc||'',v=>{uG(ti,gi,'tc',Number(v)||0);if(Number(g.usd)>0&&Number(v)>0)setTimeout(()=>calcUSD(g.usd,v),50);},{type:'number',placeholder:'T/C',celda:`tg${ti}-${gi}tc`})},
           ]:[]),
           {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>uG(ti,gi,'cuotaTotal',Math.max(1,Number(v)||1)),{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
-          {w:26,bg:rbg,node:(g.cuotaTotal<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
+          {w:26,bg:rbg,node:(!prop&&g.cuotaTotal<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
           {w:26,bg:rbg,node:delB(async()=>{
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
             if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas en meses siguientes','#217346');}
