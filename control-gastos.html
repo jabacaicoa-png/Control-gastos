@@ -436,7 +436,7 @@ function addB(label,color,bg,onClick){const d=E('div','btn-add');d.style.cssText
 function secHd(title,bg,color,total){
   return mkRow([
     {grow:true,bg,node:(()=>{const d=E('div');d.style.cssText=`padding:3px 8px;font-size:12px;font-weight:700;color:${color};`;d.textContent=title;return d;})()},
-    {w:90,bg,node:(()=>{const d=E('div','val');d.style.fontWeight='700';d.style.color=color;d.style.justifyContent='flex-start';d.textContent=fmt(total);return d;})()},,
+    {w:90,bg,node:(()=>{const d=E('div','val');d.style.fontWeight='700';d.style.color=color;d.style.justifyContent='flex-start';d.textContent=fmt(total);return d;})()},
   ],'2px solid #9E9E9E');
 }
 
@@ -615,14 +615,14 @@ function render(){
         tbl.appendChild(mkRow([
           {w:24,bg:rbg,node:E('div')},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
-          {w:90,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=fmt(g.importe);return d;})():mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`})},
+          {w:90,bg:rbg,node:mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`,color:prop?'#A07050':'#000'})},
           ...(isSAN?[
             {w:58,bg:rbg,node:prop?E('div'):mkCell(g.usd||'',v=>{uG(ti,gi,'usd',Number(v)||0);if(Number(v)>0&&Number(g.tc)>0)setTimeout(()=>calcUSD(v,g.tc),50);},{type:'number',placeholder:'USD',celda:`tg${ti}-${gi}usd`})},
             {w:68,bg:rbg,node:prop?E('div'):mkCell(g.tc||'',v=>{uG(ti,gi,'tc',Number(v)||0);if(Number(g.usd)>0&&Number(v)>0)setTimeout(()=>calcUSD(g.usd,v),50);},{type:'number',placeholder:'T/C',celda:`tg${ti}-${gi}tc`})},
           ]:[]),
           {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>uG(ti,gi,'cuotaTotal',Math.max(1,Number(v)||1)),{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
-          {w:26,bg:rbg,node:prop?E('div'):repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'} — ${g.cuotaTotal} CUOTA${g.cuotaTotal>1?'S':''}`,g.id,t.id,g.cuotaTotal))},
+          {w:26,bg:rbg,node:repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'} — ${g.cuotaTotal} CUOTA${g.cuotaTotal>1?'S':''}`,g.id,t.id,g.cuotaTotal))},
           {w:26,bg:rbg,node:delB(async()=>{
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
             if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas en meses siguientes','#217346');}
