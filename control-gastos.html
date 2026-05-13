@@ -629,7 +629,7 @@ function render(){
       }
 
       (t.gastos||[]).forEach((g,gi)=>{
-        const prop=g.cuotaNum>1,esC=Number(g.cuotaTotal)>1;
+        const prop=g.cuotaNum>1&&Number(g.cuotaTotal)>1,esC=Number(g.cuotaTotal)>1;
         const rbg=gi%2===0?'#FFFAF7':'#FFF3EC';
         const calcUSD=(usd,tc)=>{
           if(Number(usd)>0&&Number(tc)>0){
