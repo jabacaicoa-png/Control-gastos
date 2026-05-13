@@ -344,18 +344,26 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
+let _confirmCallback=null;
 function confirmarEliminar(mensaje, onConfirm){
-  document.getElementById('modal-container').innerHTML=`
-    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  _confirmCallback=onConfirm;
+  const mc=document.getElementById('modal-container');
+  mc.innerHTML=`
+    <div class="modal-overlay">
       <div class="modal-box">
         <div class="modal-title">⚠ Confirmar eliminación</div>
         <div class="modal-info">${mensaje}</div>
         <div class="modal-btns">
-          <button class="btn2" onclick="closeModal()">Cancelar</button>
-          <button class="btn1" style="background:#C00000" onclick="closeModal();(${onConfirm.toString()})()">Eliminar</button>
+          <button class="btn2" id="btn-cancelar-elim">Cancelar</button>
+          <button class="btn1" id="btn-confirmar-elim" style="background:#C00000">Eliminar</button>
         </div>
       </div>
     </div>`;
+  document.getElementById('btn-cancelar-elim').onclick=()=>closeModal();
+  document.getElementById('btn-confirmar-elim').onclick=()=>{
+    closeModal();
+    if(_confirmCallback){_confirmCallback();_confirmCallback=null;}
+  };
 }
 async function confirmRep(tipo,itemId,tarjetaId,cuotaTotal,esC){
   closeModal();
