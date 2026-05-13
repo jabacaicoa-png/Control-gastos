@@ -18,7 +18,7 @@ input[type=number]{text-transform:none;}
 .ribbon-title{color:white;font-weight:700;font-size:14px;letter-spacing:1px;white-space:nowrap;}
 .nav-btn{background:#1a5c38;border:1px solid #145029;color:white;font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .nav-mes{background:white;color:#217346;font-weight:700;font-size:13px;padding:2px 8px;min-width:110px;text-align:center;}
-.gdrive-bar{background:#F2F2F2;border-bottom:1px solid #CCC;padding:5px 10px;display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+.gdrive-bar{background:#F2F2F2;border-bottom:1px solid #CCC;padding:5px 10px;display:flex;align-items:center;gap:6px;font-size:13px;flex-wrap:nowrap;overflow-x:auto;}
 .gbtn{color:white;border:none;padding:5px 10px;font-size:13px;font-family:'Courier New',monospace;cursor:pointer;border-radius:2px;white-space:nowrap;}
 .gbtn.blue{background:#4285F4;}.gbtn.green{background:#217346;}.gbtn.navy{background:#1F3864;}
 .tab-bar{background:#BFBFBF;display:flex;align-items:flex-end;padding-left:10px;border-bottom:2px solid #9E9E9E;}
@@ -125,7 +125,7 @@ function updateDriveBar(){
     info.style.cssText='color:#555;font-size:11px;';
     info.textContent='💾 Datos guardados localmente';
     const cb=document.createElement('button');cb.className='gbtn blue';
-    cb.textContent='Sincronizar con Drive';cb.onclick=cDrive;
+    cb.textContent='SYNC';cb.onclick=cDrive;
     gb.append(info,cb);
   }else{
     const info=document.createElement('span');
