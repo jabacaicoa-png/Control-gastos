@@ -135,13 +135,14 @@ function updateDriveBar(){
     si.style.cssText='color:#666;font-size:11px;';
     si.textContent='Última sync: '+fmtHora(lastSync);
     const gs=document.createElement('button');gs.className='gbtn green';
-    gs.textContent='💾 Sincronizar';gs.onclick=dSaveAll;
+    gs.textContent='SYNC';gs.onclick=dSaveAll;
     gb.append(info,si,gs);
   }
   const dl=document.createElement('button');dl.className='gbtn navy';
-  dl.textContent='⬇ CSV';dl.onclick=dlCSV;gb.appendChild(dl);
+  dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   const ub=document.createElement('button');ub.className='gbtn';
-  ub.style.background='#7F6000';ub.textContent='↩ Deshacer';ub.onclick=undoLast;gb.appendChild(ub);
+  ub.style.background='#7F6000';ub.textContent='↺';ub.title='Deshacer';ub.style.fontSize='16px';ub.onclick=undoLast;
+  gb.append(ub,dl);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
