@@ -343,6 +343,20 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
     </div>`;
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
+
+function confirmarEliminar(mensaje, onConfirm){
+  document.getElementById('modal-container').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-title">⚠ Confirmar eliminación</div>
+        <div class="modal-info">${mensaje}</div>
+        <div class="modal-btns">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" style="background:#C00000" onclick="closeModal();(${onConfirm.toString()})()">Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
 async function confirmRep(tipo,itemId,tarjetaId,cuotaTotal,esC){
   closeModal();
   const ps=pSig(anio,mesIdx);
@@ -609,7 +623,7 @@ function render(){
       {w:58,bg:'#FFF0E8',node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
       {w:58,bg:'#FFF0E8',node:vT},
       {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
-      {w:26,bg:'#FFF0E8',node:delB(()=>uT(ti,'_d'))},
+      {w:26,bg:'#FFF0E8',node:delB(()=>confirmarEliminar(`¿Eliminar tarjeta "${t.nombre||'esta tarjeta'}"? Se eliminarán todos sus gastos.`,()=>uT(ti,'_d')))},
     ],'1px solid #C0C0C0'));
 
     if(exp){
@@ -647,10 +661,10 @@ function render(){
           {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>uG(ti,gi,'cuotaTotal',Math.max(1,Number(v)||1)),{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
           {w:26,bg:rbg,node:(!prop&&g.cuotaTotal<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
-          {w:26,bg:rbg,node:delB(async()=>{
+          {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto'}"?`+((!prop&&g.cuotaTotal>1)?' Se eliminarán también las cuotas siguientes.':''),async()=>{
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
             if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas en meses siguientes','#217346');}
-          })},
+          }))},
         ],'1px solid #EEE'));
       });
       tbl.appendChild(mkRow([{w:24,node:E('div')},{grow:true,node:(()=>{const d=addB('+ Agregar gasto','#A0522D','#FFF5EE',()=>addG(ti));d.style.borderBottom='1px solid #DDD';return d;})()}]));
