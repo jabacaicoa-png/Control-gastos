@@ -302,7 +302,11 @@ function traerFijosTarjeta(tarjetaId){
     if(Number(g.cuotaTotal)>1)return;
     const existe=tarjetas[ti].gastos.find(x=>x.concepto===g.concepto);
     if(!existe){
-      tarjetas[ti].gastos.push({...g,id:uid(),cuotaOrigen:null});
+      const nuevoId=uid();
+      tarjetas[ti].gastos.push({...g,id:nuevoId,cuotaOrigen:null});
+      // Mantener el tilde en el nuevo ID
+      FIJOS['tg_'+nuevoId]=true;
+      saveFijos();
       traidos++;
     }
   });
