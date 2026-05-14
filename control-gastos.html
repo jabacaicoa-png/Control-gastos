@@ -411,9 +411,9 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
-let _confirmCallback=null;
+let _confirmCallback=null,_confirmMensaje='';
 function confirmarEliminar(mensaje, onConfirm){
-  _confirmCallback=onConfirm;
+  _confirmCallback=onConfirm;_confirmMensaje=mensaje;
   const mc=document.getElementById('modal-container');
   mc.innerHTML=`
     <div class="modal-overlay">
@@ -427,7 +427,12 @@ function confirmarEliminar(mensaje, onConfirm){
       </div>
     </div>`;
   document.getElementById('btn-cancelar-elim').onclick=()=>closeModal();
-  document.getElementById('btn-confirmar-elim').onclick=()=>{
+  // Cambiar texto y color según si es eliminación o confirmación
+  const btnConf=document.getElementById('btn-confirmar-elim');
+  const esTraer=_confirmMensaje&&_confirmMensaje.startsWith('¿Traer');
+  btnConf.textContent=esTraer?'Confirmar':'Eliminar';
+  btnConf.style.background=esTraer?'#217346':'#C00000';
+  btnConf.onclick=()=>{
     closeModal();
     if(_confirmCallback){_confirmCallback();_confirmCallback=null;}
   };
