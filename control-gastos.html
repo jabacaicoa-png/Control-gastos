@@ -76,6 +76,7 @@ const MV=()=>({
 });
 
 const ST={};
+let vistaAnual=false;
 // Fijos globales: { "fijo_ID": true, "tg_ID": true }
 let FIJOS={};
 try{const f=localStorage.getItem('fijos_globales');if(f)FIJOS=JSON.parse(f);}catch(e){}
@@ -240,9 +241,17 @@ async function dLoad(){
 
 function initGA(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
-  s.onload=()=>{window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,
-    callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
-  });};
+  s.onload=()=>{
+    window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,
+      callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
+    });
+    // Intentar reconexión silenciosa si ya autorizó antes
+    try{
+      google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,prompt:'none',
+        callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
+      }).requestAccessToken({prompt:'none'});
+    }catch(e){}
+  };
   document.head.appendChild(s);
 }
 function cDrive(){if(window.tC)window.tC.requestAccessToken();}
@@ -565,8 +574,95 @@ const uT=(ti,f,v)=>{if(f==="_d")sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j
 const uG=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];gs[gi]={...gs[gi],[f]:v};if(f==='cuotaTotal')gs[gi].cuotaNum=1;a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});
 const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti].gastos||[]),{id:uid(),concepto:'',importe:0,cuotaTotal:1,cuotaNum:1,cuotaOrigen:null}]};return{...m,tarjetas:a};});
 
+// ── Resumen Anual ──
+function renderAnual(){
+  const app=document.getElementById('app');app.innerHTML='';
+
+  // Ribbon
+  const rib=E('div','ribbon');
+  const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
+  const rs=E('div');rs.style.flex='1';
+  rib.append(rt,rs);app.appendChild(rib);
+
+  // Drive bar
+  const gb=E('div','gdrive-bar');gb.id='drive-bar';
+  app.appendChild(gb);updateDriveBar();
+
+  // Tab bar
+  const tb=E('div','tab-bar');
+  const tMes=E('div','tab');tMes.textContent=`gastos ${anio}`;tMes.style.cursor='pointer';
+  tMes.onclick=()=>{vistaAnual=false;render();};
+  const tAnual=E('div','tab');tAnual.textContent=`resumen ${anio}`;
+  tAnual.style.cssText='background:#1F3864;color:white;border:1px solid #1F3864;border-bottom:none;padding:3px 14px;font-size:13px;font-weight:700;cursor:pointer;';
+  tb.append(tMes,tAnual);app.appendChild(tb);
+
+  const cnt=E('div','content');app.appendChild(cnt);
+  const bl=E('div','block');cnt.appendChild(bl);
+
+  // Header
+  const ph=E('div','ph');ph.textContent=`RESUMEN ANUAL ${anio}`;bl.appendChild(ph);
+
+  // Tabla anual
+  const cols=[
+    {w:110,label:'MES'},
+    {w:120,label:'INGRESOS'},
+    {w:120,label:'GASTOS'},
+    {w:120,label:'RESTO'},
+  ];
+
+  // Header tabla
+  bl.appendChild(mkRow([
+    {w:110,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.cssText='color:white;font-weight:700;';d.textContent='MES';return d;})()},
+    {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.cssText='color:white;font-weight:700;';d.textContent='INGRESOS';return d;})()},
+    {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.cssText='color:white;font-weight:700;';d.textContent='GASTOS';return d;})()},
+    {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.cssText='color:white;font-weight:700;';d.textContent='RESTO';return d;})()},
+  ],'2px solid #9E9E9E'));
+
+  let totalIngresos=0,totalGastos=0;
+
+  MESES.forEach((mes,m)=>{
+    if(!gST(anio,m))lLoad(anio,m);
+    const d=gST(anio,m);
+    if(!d){
+      bl.appendChild(mkRow([
+        {w:110,bg:m%2===0?'white':'#F5F5F5',node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},
+        {w:120,bg:m%2===0?'white':'#F5F5F5',node:(()=>{const dv=E('div','val');dv.style.color='#CCC';dv.textContent='—';return dv;})()},
+        {w:120,bg:m%2===0?'white':'#F5F5F5',node:(()=>{const dv=E('div','val');dv.style.color='#CCC';dv.textContent='—';return dv;})()},
+        {w:120,bg:m%2===0?'white':'#F5F5F5',node:(()=>{const dv=E('div','val');dv.style.color='#CCC';dv.textContent='—';return dv;})()},
+      ]));
+      return;
+    }
+    const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
+    const tT=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
+    const tF=(d.fijos||[]).reduce((s,f)=>s+(Number(f.importe)||0),0);
+    const ing=Number(d.sueldo||0)+tE;
+    const gas=tT+tF;
+    const res=ing-gas;
+    totalIngresos+=ing;totalGastos+=gas;
+    const rbg=m%2===0?'white':'#F5F5F5';
+    const resColor=res>=0?'#1F3864':'#C00000';
+    bl.appendChild(mkRow([
+      {w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.fontWeight='700';dv.textContent=mes;return dv;})()},
+      {w:120,bg:'#E2EFDA',node:(()=>{const dv=E('div','val');dv.style.color='#375623';dv.textContent=fmt(ing);return dv;})()},
+      {w:120,bg:'#FCE4D6',node:(()=>{const dv=E('div','val');dv.style.color='#833C00';dv.textContent=fmt(gas);return dv;})()},
+      {w:120,bg:res>=0?'#DAEEF3':'#FFCCCC',node:(()=>{const dv=E('div','val');dv.style.color=resColor;dv.style.fontWeight='700';dv.textContent=fmt(res);return dv;})()},
+    ]));
+  });
+
+  // Total anual
+  const totalResto=totalIngresos-totalGastos;
+  const totColor=totalResto>=0?'#1F3864':'#C00000';
+  bl.appendChild(mkRow([
+    {w:110,bg:'#1F3864',node:(()=>{const d=E('div','lbl');d.style.cssText='color:white;font-weight:700;';d.textContent='TOTAL';return d;})()},
+    {w:120,bg:'#C6EFCE',node:(()=>{const d=E('div','val');d.style.cssText='color:#375623;font-weight:700;';d.textContent=fmt(totalIngresos);return d;})()},
+    {w:120,bg:'#FCE4D6',node:(()=>{const d=E('div','val');d.style.cssText='color:#833C00;font-weight:700;';d.textContent=fmt(totalGastos);return d;})()},
+    {w:120,bg:totalResto>=0?'#DAEEF3':'#FFCCCC',node:(()=>{const d=E('div','val');d.style.cssText=`color:${totColor};font-weight:700;`;d.textContent=fmt(totalResto);return d;})()},
+  ],'none'));
+}
+
 // ── RENDER ──
 function render(){
+  if(vistaAnual){renderAnual();return;}
   const mes=gM();
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
   const tT=mes.tarjetas.reduce((s,t)=>s+(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0),0);
@@ -589,7 +685,11 @@ function render(){
   const gb=E('div','gdrive-bar');gb.id='drive-bar';
   app.appendChild(gb);updateDriveBar();
 
-  const tb=E('div','tab-bar');const t=E('div','tab');t.textContent=`gastos ${anio}`;tb.appendChild(t);app.appendChild(tb);
+  const tb=E('div','tab-bar');
+  const t=E('div','tab');t.textContent=`gastos ${anio}`;tb.appendChild(t);
+  const tA=E('div','tab');tA.textContent=`resumen ${anio}`;tA.style.cursor='pointer';tA.style.color='#999';
+  tA.onclick=()=>{vistaAnual=true;renderAnual();};
+  tb.appendChild(tA);app.appendChild(tb);
   const cnt=E('div','content');app.appendChild(cnt);
 
   // ── RESUMEN ──
