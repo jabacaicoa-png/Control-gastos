@@ -650,13 +650,15 @@ function render(){
     const rbg=i%2===0?'white':'#F5F8FF';
     const vNode=mkFecha(f.venc,v=>uF(i,'venc',v),`f${i}v`);
     if(f.venc&&!f.fpago)vNode.classList.add('vr');
+    const chkF=(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo(f.id)?'☑':'☐';d.title=esFijo(f.id)?'Fijo — se trae al mes siguiente':'Marcar como fijo';d.onclick=()=>toggleFijo(f.id);return d;})();
     tbl.appendChild(mkRow([
+      {w:24,bg:rbg,node:chkF},
       {w:160,bg:rbg,node:mkCell(f.concepto,v=>uF(i,'concepto',v),{placeholder:'CONCEPTO',celda:`f${i}c`})},
       {w:90,bg:rbg,node:mkCell(f.importe,v=>uF(i,'importe',Number(v)||0),{type:'number',celda:`f${i}i`})},
       {w:58,node:vNode},
       {w:58,node:mkFecha(f.fpago,v=>uF(i,'fpago',v),`f${i}p`)},
       {w:26,node:repB(()=>openModal('fijo',f.concepto||'(SIN NOMBRE)',f.id,null,null))},
-      {w:26,node:delB(()=>sM(m=>({...m,fijos:m.fijos.filter((_,j)=>j!==i)})))},
+      {w:26,node:delB(()=>confirmarEliminar(`¿Eliminar "${f.concepto||'esta fila'}"?`,()=>sM(m=>({...m,fijos:m.fijos.filter((_,j)=>j!==i)}))))},
     ]));
   });
   const rowFijos=E('div');rowFijos.style.cssText='display:flex;border-bottom:2px solid #D0D0D0;';
