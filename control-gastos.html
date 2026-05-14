@@ -245,12 +245,8 @@ function initGA(){
     window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,
       callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
     });
-    // Intentar reconexión silenciosa si ya autorizó antes
-    try{
-      google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,prompt:'none',
-        callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
-      }).requestAccessToken({prompt:'none'});
-    }catch(e){}
+    // Mostrar modal de sync al iniciar
+    mostrarModalSync();
   };
   document.head.appendChild(s);
 }
@@ -390,6 +386,30 @@ function dlCSV(){
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`gastos-${MESES[mesIdx]}-${anio}.csv`;a.click();URL.revokeObjectURL(url);
+}
+
+// ── Modal sync inicial ──
+function mostrarModalSync(){
+  const mc=document.getElementById('modal-container');
+  mc.innerHTML=`
+    <div class="modal-overlay">
+      <div class="modal-box" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">☁️</div>
+        <div class="modal-title" style="text-align:center;font-size:15px;">CONTROL DE GASTOS</div>
+        <div class="modal-info" style="text-align:center;margin-bottom:16px;">¿Sincronizar datos con Google Drive antes de comenzar?</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn1" id="btn-sync-init" style="width:100%;padding:10px;font-size:14px;">☁ Sincronizar con Drive</button>
+          <button class="btn2" id="btn-nosync-init" style="width:100%;padding:10px;font-size:13px;">Continuar sin sincronizar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('btn-sync-init').onclick=()=>{
+    closeModal();
+    cDrive();
+  };
+  document.getElementById('btn-nosync-init').onclick=()=>{
+    closeModal();
+  };
 }
 
 // ── Toast ──
