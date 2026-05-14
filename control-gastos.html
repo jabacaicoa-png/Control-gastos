@@ -76,6 +76,13 @@ const MV=()=>({
 });
 
 const ST={};
+// Fijos globales: { "fijo_ID": true, "tg_ID": true }
+let FIJOS={};
+try{const f=localStorage.getItem('fijos_globales');if(f)FIJOS=JSON.parse(f);}catch(e){}
+function saveFijos(){try{localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
+function toggleFijo(id){FIJOS[id]=!FIJOS[id];if(!FIJOS[id])delete FIJOS[id];saveFijos();render();}
+function esFijo(id){return !!FIJOS[id];}
+
 // Historial para deshacer (últimos 10 cambios)
 const HISTORY=[];
 const MAX_HISTORY=10;
@@ -239,6 +246,53 @@ function initGA(){
   document.head.appendChild(s);
 }
 function cDrive(){if(window.tC)window.tC.requestAccessToken();}
+
+// ── Traer fijos del mes anterior ──
+function traerFijosAnteriores(seccion){
+  // Calcular mes anterior
+  let ma=mesIdx-1,aa=anio;
+  if(ma<0){ma=11;aa=anio-1;}
+  if(!gST(aa,ma))lLoad(aa,ma);
+  const anterior=gST(aa,ma);
+  if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
+  const actual=gM();
+  let traidos=0;
+
+  if(seccion==='fijos'){
+    const nuevos=[...actual.fijos];
+    (anterior.fijos||[]).forEach(f=>{
+      if(!esFijo(f.id))return;
+      const existe=nuevos.find(x=>x.id===f.id);
+      if(existe){
+        // Ya existe, actualizar importe si es diferente
+      } else {
+        nuevos.push({...f});traidos++;
+      }
+    });
+    if(traidos>0){sM(m=>({...m,fijos:nuevos}));toast('✓ Fijos traídos del mes anterior','#217346');}
+    else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
+  }
+
+  else if(seccion==='tarjetas'){
+    const tarjetas=[...actual.tarjetas];
+    let traidos=0;
+    (anterior.tarjetas||[]).forEach(ta=>{
+      const ti=tarjetas.findIndex(t=>t.id===ta.id);
+      if(ti===-1)return;
+      (ta.gastos||[]).forEach(g=>{
+        if(!esFijo('tg_'+g.id))return;
+        if(Number(g.cuotaTotal)>1)return; // no traer cuotas
+        const existe=tarjetas[ti].gastos.find(x=>x.id===g.id||x.concepto===g.concepto);
+        if(!existe){
+          tarjetas[ti].gastos.push({...g,id:uid(),cuotaOrigen:null});
+          traidos++;
+        }
+      });
+    });
+    if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos del mes anterior','#217346');}
+    else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
+  }
+}
 
 // ── Periodos ──
 function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({anio:a+Math.floor(t/12),mes:t%12});}return r;}
@@ -568,6 +622,7 @@ function render(){
   // GASTOS
   tbl.appendChild(secHd('▸  GASTOS','#D9E1F2','#1F3864',tF+tT));
   tbl.appendChild(mkRow([
+    {w:24,bg:'#B4C6E7',node:E('div')},
     {w:160,bg:'#B4C6E7',node:thN('Concepto')},
     {w:90,bg:'#B4C6E7',node:thN('Importe')},
     {w:58,bg:'#B4C6E7',node:thN('Venc.','center')},
@@ -604,7 +659,10 @@ function render(){
       {w:26,node:delB(()=>sM(m=>({...m,fijos:m.fijos.filter((_,j)=>j!==i)})))},
     ]));
   });
-  tbl.appendChild(addB('+ Agregar fila','#1F3864','#EEF2FF',()=>sM(m=>({...m,fijos:[...m.fijos,{id:uid(),concepto:'',importe:0,venc:'',fpago:''}]}))));
+  const rowFijos=E('div');rowFijos.style.cssText='display:flex;border-bottom:2px solid #D0D0D0;';
+  const btnAgrFijo=E('div','btn-add');btnAgrFijo.style.cssText='color:#1F3864;background:#EEF2FF;flex:1;';btnAgrFijo.textContent='+ Agregar fila';btnAgrFijo.onclick=()=>sM(m=>({...m,fijos:[...m.fijos,{id:uid(),concepto:'',importe:0,venc:'',fpago:''}]}));
+  const btnTraerFijo=E('div','btn-add');btnTraerFijo.style.cssText='color:#375623;background:#E2EFDA;border-left:1px solid #C6E0B4;flex:1;justify-content:center;';btnTraerFijo.textContent='☑ Traer fijos';btnTraerFijo.onclick=()=>traerFijosAnteriores('fijos');
+  rowFijos.append(btnAgrFijo,btnTraerFijo);tbl.appendChild(rowFijos);
 
   // TARJETAS
   tbl.appendChild(secHd('▸  TARJETAS DE CRÉDITO','#FCE4D6','#833C00',tT));
@@ -639,6 +697,7 @@ function render(){
       const isSAN=false;
       tbl.appendChild(mkRow([
         {w:24,bg:'#FDE8D8',node:E('div')},
+        {w:24,bg:'#FDE8D8',node:E('div')},
         {w:160,bg:'#FDE8D8',node:thN('Concepto')},
         {w:90,bg:'#FDE8D8',node:thN('Importe x cuota')},
         {w:58,bg:'#FDE8D8',node:thN('Cuotas','center')},
@@ -661,6 +720,7 @@ function render(){
         };
         tbl.appendChild(mkRow([
           {w:24,bg:rbg,node:E('div')},
+          {w:24,bg:rbg,node:(!prop&&g.cuotaTotal<=1)?(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;';d.textContent=esFijo('tg_'+g.id)?'☑':'☐';d.title='Marcar como fijo recurrente';d.onclick=()=>toggleFijo('tg_'+g.id);return d;})():E('div')},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
           {w:90,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=fmt(g.importe);return d;})():mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`})},
           ...(isSAN?[
@@ -679,7 +739,10 @@ function render(){
       tbl.appendChild(mkRow([{w:24,node:E('div')},{grow:true,node:(()=>{const d=addB('+ Agregar gasto','#A0522D','#FFF5EE',()=>addG(ti));d.style.borderBottom='1px solid #DDD';return d;})()}]));
     }
   });
-  tbl.appendChild(addB('+ Agregar tarjeta','#833C00','#FFF5EE',()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}))));
+  const rowTarj=E('div');rowTarj.style.cssText='display:flex;border-bottom:2px solid #D0D0D0;';
+  const btnAgrTarj=E('div','btn-add');btnAgrTarj.style.cssText='color:#833C00;background:#FFF5EE;flex:1;';btnAgrTarj.textContent='+ Agregar tarjeta';btnAgrTarj.onclick=()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}));
+  const btnTraerTarj=E('div','btn-add');btnTraerTarj.style.cssText='color:#375623;background:#E2EFDA;border-left:1px solid #C6E0B4;flex:1;justify-content:center;';btnTraerTarj.textContent='☑ Traer fijos';btnTraerTarj.onclick=()=>traerFijosAnteriores('tarjetas');
+  rowTarj.append(btnAgrTarj,btnTraerTarj);tbl.appendChild(rowTarj);
 }
 
 lLoad(anio,mesIdx);
