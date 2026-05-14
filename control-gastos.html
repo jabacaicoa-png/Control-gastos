@@ -249,9 +249,11 @@ function cDrive(){if(window.tC)window.tC.requestAccessToken();}
 
 // ── Traer fijos del mes anterior ──
 function traerFijosAnteriores(seccion){
-  // Calcular mes anterior
   let ma=mesIdx-1,aa=anio;
   if(ma<0){ma=11;aa=anio-1;}
+  const mesAnterior=PL(aa,ma);
+  const mesActual=PL(anio,mesIdx);
+  confirmarEliminar(`¿Traer fijos de ${mesAnterior} a ${mesActual}?`,()=>{
   if(!gST(aa,ma))lLoad(aa,ma);
   const anterior=gST(aa,ma);
   if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
@@ -272,13 +274,14 @@ function traerFijosAnteriores(seccion){
     if(traidos>0){sM(m=>({...m,fijos:nuevos}));toast('✓ Fijos traídos del mes anterior','#217346');}
     else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
   }
-
-  else if(seccion==='tarjeta'){
-    // tarjetaId pasado como tercer argumento
-  }}
+  });
+}
 function traerFijosTarjeta(tarjetaId){
   let ma=mesIdx-1,aa=anio;
   if(ma<0){ma=11;aa=anio-1;}
+  const mesAnterior=PL(aa,ma);
+  const mesActual=PL(anio,mesIdx);
+  confirmarEliminar(`¿Traer fijos de ${mesAnterior} a ${mesActual}?`,()=>{
   if(!gST(aa,ma))lLoad(aa,ma);
   const anterior=gST(aa,ma);
   if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
@@ -300,6 +303,7 @@ function traerFijosTarjeta(tarjetaId){
   });
   if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos del mes anterior','#217346');}
   else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
+  });
 }
 
 // ── Periodos ──
@@ -414,7 +418,7 @@ function confirmarEliminar(mensaje, onConfirm){
   mc.innerHTML=`
     <div class="modal-overlay">
       <div class="modal-box">
-        <div class="modal-title">⚠ Confirmar eliminación</div>
+        <div class="modal-title" id="modal-title-txt">⚠ Confirmar</div>
         <div class="modal-info">${mensaje}</div>
         <div class="modal-btns">
           <button class="btn2" id="btn-cancelar-elim">Cancelar</button>
