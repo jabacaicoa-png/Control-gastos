@@ -273,25 +273,33 @@ function traerFijosAnteriores(seccion){
     else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
   }
 
-  else if(seccion==='tarjetas'){
-    const tarjetas=[...actual.tarjetas];
-    let traidos=0;
-    (anterior.tarjetas||[]).forEach(ta=>{
-      const ti=tarjetas.findIndex(t=>t.id===ta.id);
-      if(ti===-1)return;
-      (ta.gastos||[]).forEach(g=>{
-        if(!esFijo('tg_'+g.id))return;
-        if(Number(g.cuotaTotal)>1)return; // no traer cuotas
-        const existe=tarjetas[ti].gastos.find(x=>x.id===g.id||x.concepto===g.concepto);
-        if(!existe){
-          tarjetas[ti].gastos.push({...g,id:uid(),cuotaOrigen:null});
-          traidos++;
-        }
-      });
-    });
-    if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos del mes anterior','#217346');}
-    else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
-  }
+  else if(seccion==='tarjeta'){
+    // tarjetaId pasado como tercer argumento
+  }}
+function traerFijosTarjeta(tarjetaId){
+  let ma=mesIdx-1,aa=anio;
+  if(ma<0){ma=11;aa=anio-1;}
+  if(!gST(aa,ma))lLoad(aa,ma);
+  const anterior=gST(aa,ma);
+  if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
+  const actual=gM();
+  const tarjetas=[...actual.tarjetas];
+  const ti=tarjetas.findIndex(t=>t.id===tarjetaId);
+  if(ti===-1)return;
+  const ta=anterior.tarjetas?.find(t=>t.id===tarjetaId);
+  if(!ta){toast('Sin datos de esta tarjeta en el mes anterior','#1F3864');return;}
+  let traidos=0;
+  (ta.gastos||[]).forEach(g=>{
+    if(!esFijo('tg_'+g.id))return;
+    if(Number(g.cuotaTotal)>1)return;
+    const existe=tarjetas[ti].gastos.find(x=>x.concepto===g.concepto);
+    if(!existe){
+      tarjetas[ti].gastos.push({...g,id:uid(),cuotaOrigen:null});
+      traidos++;
+    }
+  });
+  if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos del mes anterior','#217346');}
+  else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
 }
 
 // ── Periodos ──
@@ -738,13 +746,14 @@ function render(){
           }))},
         ],'1px solid #EEE'));
       });
-      tbl.appendChild(mkRow([{w:24,node:E('div')},{grow:true,node:(()=>{const d=addB('+ Agregar gasto','#A0522D','#FFF5EE',()=>addG(ti));d.style.borderBottom='1px solid #DDD';return d;})()}]));
+      const rowGasto=E('div');rowGasto.style.cssText='display:flex;border-bottom:1px solid #DDD;';
+      const paddG=E('div');paddG.style.cssText='width:24px;flex-shrink:0;';
+      const btnAgrG=E('div','btn-add');btnAgrG.style.cssText='color:#A0522D;background:#FFF5EE;flex:1;';btnAgrG.textContent='+ Agregar gasto';btnAgrG.onclick=()=>addG(ti);
+      const btnTraerG=E('div','btn-add');btnTraerG.style.cssText='color:#375623;background:#E2EFDA;border-left:1px solid #C6E0B4;flex:1;justify-content:center;';btnTraerG.textContent='☑ Traer fijos';btnTraerG.onclick=()=>traerFijosTarjeta(t.id);
+      rowGasto.append(paddG,btnAgrG,btnTraerG);tbl.appendChild(rowGasto);
     }
   });
-  const rowTarj=E('div');rowTarj.style.cssText='display:flex;border-bottom:2px solid #D0D0D0;';
-  const btnAgrTarj=E('div','btn-add');btnAgrTarj.style.cssText='color:#833C00;background:#FFF5EE;flex:1;';btnAgrTarj.textContent='+ Agregar tarjeta';btnAgrTarj.onclick=()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}));
-  const btnTraerTarj=E('div','btn-add');btnTraerTarj.style.cssText='color:#375623;background:#E2EFDA;border-left:1px solid #C6E0B4;flex:1;justify-content:center;';btnTraerTarj.textContent='☑ Traer fijos';btnTraerTarj.onclick=()=>traerFijosAnteriores('tarjetas');
-  rowTarj.append(btnAgrTarj,btnTraerTarj);tbl.appendChild(rowTarj);
+  tbl.appendChild(addB('+ Agregar tarjeta','#833C00','#FFF5EE',()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}))));
 }
 
 lLoad(anio,mesIdx);
