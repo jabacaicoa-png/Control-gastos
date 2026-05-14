@@ -120,8 +120,9 @@ function lSave(a,m){const d=ST[`${a}_${m}`];if(d)try{localStorage.setItem(lKey(a
 function lLoad(a,m){try{const r=localStorage.getItem(lKey(a,m));if(r){const d=JSON.parse(r);sST(a,m,d);return d;}}catch(e){}return null;}
 
 // ── Drive ──
-let dTimer=null,lastSync=null;
+let dTimer=null,lastSync=null,driveHint='';
 try{const ls=localStorage.getItem('lastSync_v15');if(ls)lastSync=new Date(ls);}catch(e){}
+try{const h=localStorage.getItem('drive_hint');if(h)driveHint=h;}catch(e){}
 
 function fmtHora(d){if(!d)return'nunca';return d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}
 
@@ -243,7 +244,20 @@ function initGA(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{
     window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,
-      callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;dLoad();render();setTimeout(updateDriveBar,200);}}
+      login_hint:driveHint||undefined,
+      callback:(r)=>{
+        if(r.access_token){
+          accessToken=r.access_token;driveReady=true;
+          // Guardar email para próximas veces
+          if(!driveHint){
+            fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{'Authorization':'Bearer '+r.access_token}})
+              .then(res=>res.json())
+              .then(info=>{if(info.email){driveHint=info.email;try{localStorage.setItem('drive_hint',info.email);}catch(e){}}})
+              .catch(()=>{});
+          }
+          dLoad();render();setTimeout(updateDriveBar,200);
+        }
+      }
     });
     // Mostrar modal de sync al iniciar
     mostrarModalSync();
