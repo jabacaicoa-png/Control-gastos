@@ -14,6 +14,26 @@ input{font-family:'Courier New',monospace!important;font-size:13px!important;fon
 input[type=number]{text-transform:none;}
 ::-webkit-scrollbar{height:4px;width:4px;}
 ::-webkit-scrollbar-thumb{background:#AAA;border-radius:3px;}
+/* Modo oscuro */
+body.dark{background:#1a1a2e!important;color:#e0e0e0;}
+body.dark .block{background:#16213e;border-color:#0f3460;box-shadow:2px 2px 0 #0a0a1a;}
+body.dark .row{border-bottom-color:#2a2a4a;}
+body.dark .cell{border-right-color:#2a2a4a;}
+body.dark .cv{background:transparent;color:#e0e0e0;}
+body.dark .cv input{background:#1e3a5f!important;color:#e0e0e0;}
+body.dark .lbl{color:#e0e0e0;}
+body.dark .val{color:#e0e0e0;}
+body.dark .tab-bar{background:#0f3460;border-bottom-color:#0a0a1a;}
+body.dark .tab{background:#16213e;border-color:#0f3460;color:#4fc3f7;}
+body.dark .gdrive-bar{background:#16213e;border-bottom-color:#0f3460;color:#e0e0e0;}
+body.dark .content{background:#1a1a2e;}
+body.dark .ph{background:#0f3460;}
+body.dark .btn-add{background:#16213e!important;color:#aaa!important;}
+body.dark .modal-box{background:#16213e;border-color:#0f3460;}
+body.dark .modal-title{color:#4fc3f7;border-bottom-color:#0f3460;}
+body.dark .modal-info{color:#ccc;}
+body.dark .btn2{background:#0f3460;color:#e0e0e0;border-color:#4fc3f7;}
+body.dark .modal-select{background:#0f3460;color:#e0e0e0;border-color:#4fc3f7;}
 .ribbon{background:#217346;height:40px;display:flex;align-items:center;padding:0 10px;gap:6px;box-shadow:0 2px 4px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;}
 .ribbon-title{color:white;font-weight:700;font-size:14px;letter-spacing:1px;white-space:nowrap;}
 .nav-btn{background:#1a5c38;border:1px solid #145029;color:white;font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -120,7 +140,18 @@ function lSave(a,m){const d=ST[`${a}_${m}`];if(d)try{localStorage.setItem(lKey(a
 function lLoad(a,m){try{const r=localStorage.getItem(lKey(a,m));if(r){const d=JSON.parse(r);sST(a,m,d);return d;}}catch(e){}return null;}
 
 // ── Drive ──
-let dTimer=null,lastSync=null,driveHint='';
+let dTimer=null,lastSync=null,driveHint='',darkMode=false;
+try{darkMode=localStorage.getItem('darkMode')==='1';}catch(e){}
+function toggleDark(){darkMode=!darkMode;try{localStorage.setItem('darkMode',darkMode?'1':'0');}catch(e){}applyDark();render();}
+function applyDark(){
+  const r=document.documentElement;
+  if(darkMode){
+    document.body.style.background='#1a1a2e';
+    r.style.setProperty('--bg','#1a1a2e');
+  } else {
+    document.body.style.background='#EBEBEB';
+  }
+}
 try{const ls=localStorage.getItem('lastSync_v15');if(ls)lastSync=new Date(ls);}catch(e){}
 try{const h=localStorage.getItem('drive_hint');if(h)driveHint=h;}catch(e){}
 
@@ -615,6 +646,7 @@ const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti
 // ── Resumen Anual ──
 function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
+  document.body.className=darkMode?'dark':'';
 
   // Ribbon
   const rib=E('div','ribbon');
@@ -709,11 +741,14 @@ function render(){
   const pct=iT>0?tG/iT*100:0,bc=pct>95?'#C00000':pct>80?'#E67E22':'#217346';
 
   const app=document.getElementById('app');app.innerHTML='';
+  document.body.className=darkMode?'dark':'';
 
   // Ribbon
   const rib=E('div','ribbon');
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
   const rs=E('div');rs.style.flex='1';
+  const dmBtn=E('button','nav-btn');dmBtn.textContent=darkMode?'☀':'🌙';dmBtn.title='Modo oscuro';dmBtn.onclick=toggleDark;dmBtn.style.fontSize='14px';
+  rib.appendChild(dmBtn);
   const nb=E('button','nav-btn');nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
   const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;
   const nf=E('button','nav-btn');nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
@@ -904,6 +939,7 @@ function render(){
 }
 
 lLoad(anio,mesIdx);
+applyDark();
 initGA();
 render();
 </script>
