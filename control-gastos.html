@@ -725,8 +725,12 @@ const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti
 // ── Resumen Anual ──
 function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
+  // Aplicar tema
+  const T=getT();
+  document.body.style.background=T.bodyBg;
   // Ribbon
   const rib=E('div','ribbon');
+  rib.style.background=T.ribbon;
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
   const rs=E('div');rs.style.flex='1';
   rib.append(rt,rs);app.appendChild(rib);
@@ -852,14 +856,14 @@ function render(){
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
-      {w:90,bg:'#EDF7E5',node:lbl(i===0?'+ extra':'',{italic:true,color:'#375623'})},
-      {w:120,bg:'#EDF7E5',node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
-      {w:26,bg:'#EDF7E5',node:repB(()=>openModal('extra',`EXTRA: ${e.concepto||'(SIN NOMBRE)'}`,e.id,null,null))},
-      {grow:true,bg:'#EDF7E5',node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
-      {w:26,bg:'#EDF7E5',node:delB(()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)})))},
+      {w:90,bg:T.greenBg3,node:lbl(i===0?'+ extra':'',{italic:true,color:'#375623'})},
+      {w:120,bg:T.greenBg3,node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
+      {w:26,bg:T.greenBg3,node:repB(()=>openModal('extra',`EXTRA: ${e.concepto||'(SIN NOMBRE)'}`,e.id,null,null))},
+      {grow:true,bg:T.greenBg3,node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
+      {w:26,bg:T.greenBg3,node:delB(()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)})))},
     ]));
   });
-  bl.appendChild(mkRow([{grow:true,bg:'#EDF7E5',node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
+  bl.appendChild(mkRow([{grow:true,bg:T.greenBg3,node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
 
   bl.appendChild(mkRow([
     {w:90,bg:T.greenBg2,node:lbl('Ingreso total',{bold:true,color:T.greenColor})},
@@ -884,7 +888,7 @@ function render(){
   const tbl=E('div','block');cnt.appendChild(tbl);
 
   // GASTOS
-  tbl.appendChild(secHd('▸  GASTOS','#D9E1F2','#1F3864',tF+tT));
+  tbl.appendChild(secHd('▸  GASTOS',T.headBg,T.headColor,tF+tT));
   tbl.appendChild(mkRow([
     {w:24,bg:T.headBorder,node:E('div')},
     {w:160,bg:T.headBorder,node:thN('Concepto')},
@@ -902,16 +906,16 @@ function render(){
     if(t.venc&&!t.fpago)vGNode.classList.add('vr');
     tbl.appendChild(mkRow([
       {w:160,bg:'#FFF0E8',node:(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#833C00;font-weight:700;cursor:default;';d.textContent=t.nombre||'(SIN NOMBRE)';return d;})()},
-      {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
+      {w:90,bg:T.tarjRowBg,node:valD(fmt(totT),{bold:true,color:'#833C00'})},
       {w:58,bg:'#FFF0E8',node:vGNode},
-      {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`tg${ti}p`)},
+      {w:58,bg:T.tarjRowBg,node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`tg${ti}p`)},
       {w:26,bg:'#FFF0E8',node:E('div')},
       {w:26,bg:'#FFF0E8',node:E('div')},
     ]));
   });
 
   mes.fijos.forEach((f,i)=>{
-    const rbg=i%2===0?'white':'#F5F8FF';
+    const rbg=i%2===0?T.blockBg:T.rowAlt;
     const vNode=mkFecha(f.venc,v=>uF(i,'venc',v),`f${i}v`);
     if(f.venc&&!f.fpago)vNode.classList.add('vr');
     const chkF=(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo(f.id)?'☑':'☐';d.title=esFijo(f.id)?'Fijo — se trae al mes siguiente':'Marcar como fijo';d.onclick=()=>toggleFijo(f.id);return d;})();
@@ -931,15 +935,15 @@ function render(){
   rowFijos.append(btnAgrFijo,btnTraerFijo);tbl.appendChild(rowFijos);
 
   // TARJETAS
-  tbl.appendChild(secHd('▸  TARJETAS DE CRÉDITO','#FCE4D6','#833C00',tT));
+  tbl.appendChild(secHd('▸  TARJETAS DE CRÉDITO',T.tarjHeadBg,T.tarjHeadColor,tT));
   tbl.appendChild(mkRow([
-    {w:24,bg:'#F4B183',node:E('div')},
-    {w:160,bg:'#F4B183',node:thN('Tarjeta')},
-    {w:90,bg:'#F4B183',node:thN('Total mes')},
-    {w:58,bg:'#F4B183',node:thN('Cierre','center')},
-    {w:58,bg:'#F4B183',node:thN('Venc.','center')},
-    {w:58,bg:'#F4B183',node:thN('F.Pago','center')},
-    {w:26,bg:'#F4B183',node:E('div')},
+    {w:24,bg:T.tarjHeadBorder,node:E('div')},
+    {w:160,bg:T.tarjHeadBorder,node:thN('Tarjeta')},
+    {w:90,bg:T.tarjHeadBorder,node:thN('Total mes')},
+    {w:58,bg:T.tarjHeadBorder,node:thN('Cierre','center')},
+    {w:58,bg:T.tarjHeadBorder,node:thN('Venc.','center')},
+    {w:58,bg:T.tarjHeadBorder,node:thN('F.Pago','center')},
+    {w:26,bg:T.tarjHeadBorder,node:E('div')},
   ],'2px solid #9E9E9E'));
 
   mes.tarjetas.forEach((t,ti)=>{
@@ -950,24 +954,24 @@ function render(){
     if(t.venc&&!t.fpago)vT.classList.add('vr');
 
     tbl.appendChild(mkRow([
-      {w:24,bg:'#FFF0E8',node:tog},
-      {w:160,bg:'#FFF0E8',node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
-      {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
-      {w:58,bg:'#FFF0E8',node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
-      {w:58,bg:'#FFF0E8',node:vT},
-      {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
+      {w:24,bg:T.tarjRowBg,node:tog},
+      {w:160,bg:T.tarjRowBg,node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
+      {w:90,bg:T.tarjRowBg,node:valD(fmt(totT),{bold:true,color:'#833C00'})},
+      {w:58,bg:T.tarjRowBg,node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
+      {w:58,bg:T.tarjRowBg,node:vT},
+      {w:58,bg:T.tarjRowBg,node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
       {w:26,bg:'#FFF0E8',node:delB(()=>confirmarEliminar(`¿Eliminar tarjeta "${t.nombre||'esta tarjeta'}"? Se eliminarán todos sus gastos.`,()=>uT(ti,'_d')))},
     ],'1px solid #C0C0C0'));
 
     if(exp){
       const isSAN=false;
       tbl.appendChild(mkRow([
-        {w:24,bg:'#FDE8D8',node:E('div')},
-        {w:24,bg:'#FDE8D8',node:E('div')},
-        {w:160,bg:'#FDE8D8',node:thN('Concepto')},
-        {w:90,bg:'#FDE8D8',node:thN('Importe x cuota')},
-        {w:58,bg:'#FDE8D8',node:thN('Cuotas','center')},
-        {w:48,bg:'#FDE8D8',node:thN('Nro.','center')},
+        {w:24,bg:T.tarjSubBg,node:E('div')},
+        {w:24,bg:T.tarjSubBg,node:E('div')},
+        {w:160,bg:T.tarjSubBg,node:thN('Concepto')},
+        {w:90,bg:T.tarjSubBg,node:thN('Importe x cuota')},
+        {w:58,bg:T.tarjSubBg,node:thN('Cuotas','center')},
+        {w:48,bg:T.tarjSubBg,node:thN('Nro.','center')},
         {w:26,bg:'#FDE8D8',node:E('div')},
         {w:26,bg:'#FDE8D8',node:E('div')},
       ],'1px solid #E0C0A0'));
