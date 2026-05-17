@@ -8,14 +8,7 @@
 <title>Control de Gastos</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;}
-body{background:var(--bodyBg,#EBEBEB);min-height:100vh;}
-.ribbon{background:var(--ribbon,#217346)!important;}
-.nav-btn{background:var(--navBtn,#1a5c38)!important;border-color:var(--navBtnBorder,#145029)!important;}
-.block{background:var(--blockBg,white)!important;border-color:var(--blockBorder,#9E9E9E)!important;}
-.ph{background:var(--ph,#1F3864)!important;}
-.tab-bar{background:var(--tabBg,#BFBFBF)!important;}
-.tab{color:var(--tabColor,#217346)!important;}
-.gdrive-bar{background:var(--gdriveBg,#F2F2F2)!important;color:var(--gdriveColor,#333)!important;}
+body{background:#EBEBEB;min-height:100vh;}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 input{font-family:'Courier New',monospace!important;font-size:13px!important;font-weight:700!important;text-transform:uppercase;}
 input[type=number]{text-transform:none;}
@@ -128,109 +121,7 @@ function lSave(a,m){const d=ST[`${a}_${m}`];if(d)try{localStorage.setItem(lKey(a
 function lLoad(a,m){try{const r=localStorage.getItem(lKey(a,m));if(r){const d=JSON.parse(r);sST(a,m,d);return d;}}catch(e){}return null;}
 
 // ── Drive ──
-let dTimer=null,lastSync=null,driveHint='',currentTheme='original';
-try{currentTheme=localStorage.getItem('appTheme')||'original';}catch(e){}
-
-const THEMES={
-  original:{
-    ribbon:'#217346',navBtn:'#1a5c38',navBtnBorder:'#145029',
-    tabBg:'#BFBFBF',tabColor:'#217346',
-    bodyBg:'#EBEBEB',blockBg:'white',blockBorder:'#9E9E9E',
-    ph:'#1F3864',rowBorder:'#D0D0D0',cellBorder:'#D0D0D0',
-    greenBg:'#E2EFDA',greenBg2:'#C6EFCE',greenBg3:'#EDF7E5',greenColor:'#375623',
-    orangeBg:'#FCE4D6',orangeColor:'#833C00',
-    blueBg:'#DAEEF3',blueColor:'#1F3864',
-    headBg:'#D9E1F2',headColor:'#1F3864',headBorder:'#B4C6E7',
-    tarjHeadBg:'#FCE4D6',tarjHeadColor:'#833C00',tarjHeadBorder:'#F4B183',
-    tarjRowBg:'#FFF0E8',tarjSubBg:'#FDE8D8',
-    addFijoBg:'#EEF2FF',addFijoColor:'#1F3864',
-    gdriveBg:'#F2F2F2',gdriveColor:'#333',
-    rowAlt:'#F5F8FF',
-  },
-  gris:{
-    ribbon:'#2D3748',navBtn:'#4A5568',navBtnBorder:'#718096',
-    tabBg:'#CBD5E0',tabColor:'#2D3748',
-    bodyBg:'#EDF2F7',blockBg:'white',blockBorder:'#A0AEC0',
-    ph:'#2D3748',rowBorder:'#CBD5E0',cellBorder:'#CBD5E0',
-    greenBg:'#C6F6D5',greenBg2:'#9AE6B4',greenBg3:'#E6FFFA',greenColor:'#276749',
-    orangeBg:'#FEEBC8',orangeColor:'#7B341E',
-    blueBg:'#BEE3F8',blueColor:'#2A69AC',
-    headBg:'#E2E8F0',headColor:'#2D3748',headBorder:'#A0AEC0',
-    tarjHeadBg:'#FEEBC8',tarjHeadColor:'#7B341E',tarjHeadBorder:'#FBD38D',
-    tarjRowBg:'#FFFAF0',tarjSubBg:'#FFF5E6',
-    addFijoBg:'#E2E8F0',addFijoColor:'#2D3748',
-    gdriveBg:'#EDF2F7',gdriveColor:'#4A5568',
-    rowAlt:'#F7FAFC',
-  },
-  terminal:{
-    ribbon:'#0a0a0a',navBtn:'#003300',navBtnBorder:'#00ff41',
-    tabBg:'#001a00',tabColor:'#00ff41',
-    bodyBg:'#050505',blockBg:'#0d0d0d',blockBorder:'#003300',
-    ph:'#001a00',rowBorder:'#002200',cellBorder:'#002200',
-    greenBg:'#001a00',greenBg2:'#002800',greenBg3:'#001000',greenColor:'#00ff41',
-    orangeBg:'#0d0800',orangeColor:'#ffaa00',
-    blueBg:'#00001a',blueColor:'#4fc3f7',
-    headBg:'#002200',headColor:'#00ff41',headBorder:'#003300',
-    tarjHeadBg:'#080d00',tarjHeadColor:'#88ff44',tarjHeadBorder:'#004400',
-    tarjRowBg:'#080d00',tarjSubBg:'#060900',
-    addFijoBg:'#001a00',addFijoColor:'#00ff41',
-    gdriveBg:'#0d0d0d',gdriveColor:'#00cc33',
-    rowAlt:'#0a0f0a',
-  },
-  marino:{
-    ribbon:'#0f2044',navBtn:'#2d5fa6',navBtnBorder:'#1a3a7a',
-    tabBg:'#1a2f5e',tabColor:'#a8c4f0',
-    bodyBg:'#0a1628',blockBg:'#111e3c',blockBorder:'#1a2f5e',
-    ph:'#0f2044',rowBorder:'#1a2f5e',cellBorder:'#1a2f5e',
-    greenBg:'#0a3020',greenBg2:'#0d4030',greenBg3:'#071a10',greenColor:'#4ade80',
-    orangeBg:'#2d1a00',orangeColor:'#fb923c',
-    blueBg:'#0a1a40',blueColor:'#60a5fa',
-    headBg:'#1a2f5e',headColor:'#93c5fd',headBorder:'#2d4a8a',
-    tarjHeadBg:'#1a1030',tarjHeadColor:'#c084fc',tarjHeadBorder:'#2d1a50',
-    tarjRowBg:'#120d28',tarjSubBg:'#0f0a20',
-    addFijoBg:'#0a1640',addFijoColor:'#60a5fa',
-    gdriveBg:'#111e3c',gdriveColor:'#a8c4f0',
-    rowAlt:'#0f1a38',
-  },
-  cafe:{
-    ribbon:'#5C3D2E',navBtn:'#8B5E3C',navBtnBorder:'#4A2E1A',
-    tabBg:'#D4B896',tabColor:'#5C3D2E',
-    bodyBg:'#F0E6D3',blockBg:'#FDF8F0',blockBorder:'#C4956A',
-    ph:'#5C3D2E',rowBorder:'#D4B896',cellBorder:'#D4B896',
-    greenBg:'#D4EDDA',greenBg2:'#A8D5B5',greenBg3:'#E8F5E9',greenColor:'#2D6A4F',
-    orangeBg:'#FFE8CC',orangeColor:'#8B4513',
-    blueBg:'#D1E8F5',blueColor:'#1A4E6E',
-    headBg:'#E8D5B8',headColor:'#5C3D2E',headBorder:'#C4956A',
-    tarjHeadBg:'#FFE4C4',tarjHeadColor:'#8B4513',tarjHeadBorder:'#D4956A',
-    tarjRowBg:'#FFF5E6',tarjSubBg:'#FFEEDD',
-    addFijoBg:'#EDE0CC',addFijoColor:'#5C3D2E',
-    gdriveBg:'#F5ECD7',gdriveColor:'#6B4C35',
-    rowAlt:'#F5ECD7',
-  },
-};
-
-function getT(){return THEMES[currentTheme]||THEMES.original;}
-function setTheme(t){currentTheme=t;try{localStorage.setItem('appTheme',t);}catch(e){}render();}
-
-function mostrarSelectorTema(){
-  const nombres={original:'🟢 Original',gris:'⚫ Gris',terminal:'🟩 Terminal',marino:'🔵 Marino',cafe:'🟤 Café'};
-  const mc=document.getElementById('modal-container');
-  const opts=Object.keys(THEMES).map(k=>`
-    <button onclick="setTheme('${k}');closeModal()" style="
-      width:100%;padding:10px 14px;margin-bottom:6px;font-family:'Courier New',monospace;
-      font-size:13px;font-weight:700;cursor:pointer;border:2px solid ${currentTheme===k?'#217346':'#ccc'};
-      background:${currentTheme===k?'#E2EFDA':'white'};color:#333;text-align:left;border-radius:3px;">
-      ${nombres[k]}${currentTheme===k?' ✓':''}
-    </button>`).join('');
-  mc.innerHTML=`
-    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-      <div class="modal-box">
-        <div class="modal-title">🎨 Elegir tema</div>
-        ${opts}
-        <button class="btn2" onclick="closeModal()" style="width:100%;margin-top:4px;">Cancelar</button>
-      </div>
-    </div>`;
-}
+let dTimer=null,lastSync=null,driveHint='';
 try{const ls=localStorage.getItem('lastSync_v15');if(ls)lastSync=new Date(ls);}catch(e){}
 try{const h=localStorage.getItem('drive_hint');if(h)driveHint=h;}catch(e){}
 
@@ -240,74 +131,24 @@ function updateDriveBar(){
   const gb=document.getElementById('drive-bar');if(!gb)return;
   gb.innerHTML='';
   if(!driveReady){
-    const info=document.createElement('span');
-    info.style.cssText='color:#555;font-size:11px;';
-    info.textContent='💾 Datos guardados localmente';
-    const cb=document.createElement('button');cb.className='gbtn blue';
-    cb.textContent='SYNC';cb.onclick=cDrive;
+    const info=document.createElement('span');info.style.cssText='color:#555;font-size:11px;';info.textContent='💾 Datos guardados localmente';
+    const cb=document.createElement('button');cb.className='gbtn blue';cb.textContent='SYNC';cb.onclick=cDrive;
     gb.append(info,cb);
   }else{
-    const info=document.createElement('span');
-    info.style.cssText='color:#375623;font-size:11px;font-weight:700;';
-    info.textContent='✓ Drive';
-    const si=document.createElement('span');
-    si.style.cssText='color:#666;font-size:11px;';
-    si.textContent='Última sync: '+fmtHora(lastSync);
-    const gs=document.createElement('button');gs.className='gbtn green';
-    gs.textContent='SYNC';gs.onclick=dSaveAll;
+    const info=document.createElement('span');info.style.cssText='color:#375623;font-size:11px;font-weight:700;';info.textContent='✓ Drive';
+    const si=document.createElement('span');si.style.cssText='color:#666;font-size:11px;';si.textContent='Última sync: '+fmtHora(lastSync);
+    const gs=document.createElement('button');gs.className='gbtn green';gs.textContent='SYNC';gs.onclick=dSaveAll;
     gb.append(info,si,gs);
   }
-  const dl=document.createElement('button');dl.className='gbtn navy';
-  dl.textContent='⬇ CSV';dl.onclick=dlCSV;
-  const ub=document.createElement('button');ub.className='gbtn';
-  ub.style.background='#7F6000';ub.textContent='↺';ub.title='Deshacer';ub.style.fontSize='22px';ub.onclick=undoLast;
+  const ub=document.createElement('button');ub.className='gbtn';ub.style.background='#7F6000';ub.textContent='↺';ub.title='Deshacer';ub.style.fontSize='22px';ub.onclick=undoLast;
+  const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   gb.append(ub,dl);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
 
-// Guardar con timestamp por clave
-function sST_ts(a,m,d){
-  ST[`${a}_${m}`]=d;
-  // Guardar timestamp de última modificación
-  ST[`__ts_${a}_${m}`]=Date.now();
-}
-
-// Merge: comparar timestamps clave por clave, Drive gana si es más reciente
-function mergeWithDrive(driveData){
-  let cambios=0;
-  const allDataKeys=new Set([
-    ...Object.keys(driveData).filter(k=>!k.startsWith('__ts_')),
-    ...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))
-  ]);
-  allDataKeys.forEach(k=>{
-    const tsKey=`__ts_${k}`;
-    const localTs=ST[tsKey]||0;
-    const driveTs=driveData[tsKey]||0;
-    if(driveTs>localTs){
-      // Drive es más reciente — usar Drive
-      if(driveData[k]!==undefined){ST[k]=driveData[k];ST[tsKey]=driveTs;cambios++;}
-    } else if(localTs===0&&driveTs===0){
-      // Ninguno tiene timestamp — Drive gana (viene de otro dispositivo)
-      if(driveData[k]!==undefined){ST[k]=driveData[k];cambios++;}
-    }
-    // Si local es más reciente, no hacer nada (ya está en ST)
-  });
-  return cambios;
-}
-
 async function dSaveAll(){
   if(!driveReady||!accessToken)return;
-  // Primero leer Drive para hacer merge antes de guardar
-  try{
-    if(driveFileId){
-      const current=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{
-        headers:{'Authorization':'Bearer '+accessToken}
-      }).then(r=>r.json()).catch(()=>null);
-      if(current) mergeWithDrive(current);
-    }
-  }catch(e){}
-  // Ahora guardar el merge completo
   const body=JSON.stringify(ST);
   try{
     if(driveFileId){
@@ -330,24 +171,26 @@ async function dLoad(){
     const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FNAME}'&spaces=drive&fields=files(id,name)`,{headers:{'Authorization':'Bearer '+accessToken}}).then(r=>r.json());
     if(r.files&&r.files.length>0){
       driveFileId=r.files[0].id;
-      const driveData=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{
-        headers:{'Authorization':'Bearer '+accessToken}
-      }).then(r=>r.json());
+      const driveData=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{'Authorization':'Bearer '+accessToken}}).then(r=>r.json());
       const cambios=mergeWithDrive(driveData);
-      // Guardar localmente todo lo que vino de Drive
-      Object.keys(ST).forEach(k=>{
-        if(!k.startsWith('__ts_')){
-          const parts=k.split('_');
-          if(parts.length>=2){try{localStorage.setItem(lKey(parts[0],parts[1]),JSON.stringify(ST[k]));}catch(e){}}
-        }
-      });
+      Object.keys(ST).forEach(k=>{if(!k.startsWith('__ts_')){const parts=k.split('_');if(parts.length>=2){try{localStorage.setItem(lKey(parts[0],parts[1]),JSON.stringify(ST[k]));}catch(e){}}}});
       toast('✓ Sincronizado con Drive'+(cambios>0?' — datos actualizados':''),'#217346');
       render();
-    }else{
-      // No hay archivo en Drive todavía, subir datos locales
-      await dSaveAll();
-    }
+    }else{await dSaveAll();}
   }catch(e){toast('⚠ Error al sincronizar con Drive','#7F4F00');}
+}
+
+function mergeWithDrive(driveData){
+  let cambios=0;
+  const allDataKeys=new Set([...Object.keys(driveData).filter(k=>!k.startsWith('__ts_')),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
+  allDataKeys.forEach(k=>{
+    const tsKey=`__ts_${k}`;
+    const localTs=ST[tsKey]||0;
+    const driveTs=driveData[tsKey]||0;
+    if(driveTs>localTs){if(driveData[k]!==undefined){ST[k]=driveData[k];ST[tsKey]=driveTs;cambios++;}}
+    else if(localTs===0&&driveTs===0){if(driveData[k]!==undefined){ST[k]=driveData[k];cambios++;}}
+  });
+  return cambios;
 }
 
 function initGA(){
@@ -358,142 +201,38 @@ function initGA(){
       callback:(r)=>{
         if(r.access_token){
           accessToken=r.access_token;driveReady=true;
-          // Guardar email para próximas veces
           if(!driveHint){
             fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{'Authorization':'Bearer '+r.access_token}})
-              .then(res=>res.json())
-              .then(info=>{if(info.email){driveHint=info.email;try{localStorage.setItem('drive_hint',info.email);}catch(e){}}})
-              .catch(()=>{});
+              .then(res=>res.json()).then(info=>{if(info.email){driveHint=info.email;try{localStorage.setItem('drive_hint',info.email);}catch(e){}}}).catch(()=>{});
           }
           dLoad();render();setTimeout(updateDriveBar,200);
         }
       }
     });
-    // Mostrar modal de sync al iniciar
     mostrarModalSync();
   };
   document.head.appendChild(s);
 }
 function cDrive(){if(window.tC)window.tC.requestAccessToken();}
 
-// ── Traer fijos del mes anterior ──
-function traerFijosAnteriores(seccion){
-  let ma=mesIdx-1,aa=anio;
-  if(ma<0){ma=11;aa=anio-1;}
-  const mesAnterior=PL(aa,ma);
-  const mesActual=PL(anio,mesIdx);
-  confirmarEliminar(`¿Traer fijos de ${mesAnterior} a ${mesActual}?`,()=>{
-  if(!gST(aa,ma))lLoad(aa,ma);
-  const anterior=gST(aa,ma);
-  if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
-  const actual=gM();
-  let traidos=0;
-
-  if(seccion==='fijos'){
-    const nuevos=[...actual.fijos];
-    (anterior.fijos||[]).forEach(f=>{
-      if(!esFijo(f.id))return;
-      const existe=nuevos.find(x=>x.id===f.id);
-      if(existe){
-        // Ya existe, actualizar importe si es diferente
-      } else {
-        nuevos.push({...f});traidos++;
-      }
-    });
-    if(traidos>0){sM(m=>({...m,fijos:nuevos}));toast('✓ Fijos traídos del mes anterior','#217346');}
-    else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
-  }
-  });
-}
-function traerFijosTarjeta(tarjetaId){
-  let ma=mesIdx-1,aa=anio;
-  if(ma<0){ma=11;aa=anio-1;}
-  const mesAnterior=PL(aa,ma);
-  const mesActual=PL(anio,mesIdx);
-  confirmarEliminar(`¿Traer fijos de ${mesAnterior} a ${mesActual}?`,()=>{
-  if(!gST(aa,ma))lLoad(aa,ma);
-  const anterior=gST(aa,ma);
-  if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
-  const actual=gM();
-  const tarjetas=[...actual.tarjetas];
-  const ti=tarjetas.findIndex(t=>t.id===tarjetaId);
-  if(ti===-1)return;
-  const ta=anterior.tarjetas?.find(t=>t.id===tarjetaId);
-  if(!ta){toast('Sin datos de esta tarjeta en el mes anterior','#1F3864');return;}
-  let traidos=0;
-  (ta.gastos||[]).forEach(g=>{
-    if(!esFijo('tg_'+g.id))return;
-    if(Number(g.cuotaTotal)>1)return;
-    const existe=tarjetas[ti].gastos.find(x=>x.concepto===g.concepto);
-    if(!existe){
-      const nuevoId=uid();
-      tarjetas[ti].gastos.push({...g,id:nuevoId,cuotaOrigen:null});
-      // Mantener el tilde en el nuevo ID
-      FIJOS['tg_'+nuevoId]=true;
-      saveFijos();
-      traidos++;
-    }
-  });
-  if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos del mes anterior','#217346');}
-  else toast('No hay fijos nuevos para traer o ya están cargados','#1F3864');
-  });
+function mostrarModalSync(){
+  const mc=document.getElementById('modal-container');
+  mc.innerHTML=`
+    <div class="modal-overlay">
+      <div class="modal-box" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">☁️</div>
+        <div class="modal-title" style="text-align:center;font-size:15px;">CONTROL DE GASTOS</div>
+        <div class="modal-info" style="text-align:center;margin-bottom:16px;">¿Sincronizar datos con Google Drive antes de comenzar?</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn1" id="btn-sync-init" style="width:100%;padding:10px;font-size:14px;">☁ Sincronizar con Drive</button>
+          <button class="btn2" id="btn-nosync-init" style="width:100%;padding:10px;font-size:13px;">Continuar sin sincronizar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('btn-sync-init').onclick=()=>{closeModal();cDrive();};
+  document.getElementById('btn-nosync-init').onclick=()=>{closeModal();};
 }
 
-// ── Periodos ──
-function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({anio:a+Math.floor(t/12),mes:t%12});}return r;}
-
-// ── Replicación ──
-async function replic({tipo,periodos,itemId,tarjetaId}){
-  const o=gM();let payload;
-  if(tipo==="sueldo")payload=o.sueldo;
-  else if(tipo==="extra")payload=o.extras.find(e=>e.id===itemId);
-  else if(tipo==="fijo")payload=o.fijos.find(f=>f.id===itemId);
-  else if(tipo==="tarjetaGasto"){const t=o.tarjetas.find(t=>t.id===tarjetaId);payload=t?.gastos.find(g=>g.id===itemId);}
-  if(!payload&&payload!==0)return{ok:0,conf:["Ítem no encontrado"]};
-  const conf=[];let ok=0;
-  for(let i=0;i<periodos.length;i++){
-    const{anio:a,mes:m}=periodos[i];
-    if(!gST(a,m))lLoad(a,m);
-    let d=gST(a,m)??MV();let mod=false;const lb=PL(a,m);
-    if(tipo==="sueldo"){
-      if(d.sueldo!==0&&d.sueldo!==payload)conf.push(`${lb}: Sueldo ya tiene $${fmt(d.sueldo)}`);
-      else{d.sueldo=payload;mod=true;}
-    }else if(tipo==="extra"){
-      const idx=d.extras.findIndex(e=>e.id===itemId);
-      if(idx!==-1){if(d.extras[idx].importe!==0&&d.extras[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.extras[idx].importe)}`);else{d.extras[idx]={...d.extras[idx],...payload};mod=true;}}
-      else{d.extras.push({...payload,id:uid()});mod=true;}
-    }else if(tipo==="fijo"){
-      const idx=d.fijos.findIndex(f=>f.id===itemId);
-      if(idx!==-1){if(d.fijos[idx].importe!==0&&d.fijos[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.fijos[idx].importe)}`);else{d.fijos[idx]={...d.fijos[idx],...payload};mod=true;}}
-      else{d.fijos.push({...payload,id:uid()});mod=true;}
-    }else if(tipo==="tarjetaGasto"){
-      let ti=d.tarjetas.findIndex(t=>t.id===tarjetaId);
-      if(ti===-1){d.tarjetas.push({id:tarjetaId,nombre:payload.nombreTarjeta||tarjetaId,cierre:"",venc:"",fpago:"",gastos:[]});ti=d.tarjetas.length-1;}
-      const cn=1+(i+1);const dup=d.tarjetas[ti].gastos.find(g=>g.cuotaOrigen===itemId);
-      if(dup&&dup.importe!==0)conf.push(`${lb}: "${payload.concepto}" cuota ${cn}/${payload.cuotaTotal} ya existe`);
-      else{d.tarjetas[ti].gastos=d.tarjetas[ti].gastos.filter(g=>g.cuotaOrigen!==itemId);d.tarjetas[ti].gastos.push({id:uid(),concepto:payload.concepto,importe:payload.importe,cuotaTotal:payload.cuotaTotal,cuotaNum:cn,cuotaOrigen:itemId});mod=true;}
-    }
-    if(mod){sST(a,m,d);lSave(a,m);ok++;}
-  }
-  if(driveReady)dDebounce();
-  return{ok,conf};
-}
-
-async function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
-  for(let i=1;i<=36;i++){
-    let nm=desdeMes+i,na=desdeAnio;
-    if(nm>11){na+=Math.floor(nm/12);nm=nm%12;}
-    if(!gST(na,nm))lLoad(na,nm);
-    const d=gST(na,nm);if(!d)continue;
-    const ti=d.tarjetas?.findIndex(t=>t.id===tarjetaId)??-1;if(ti===-1)continue;
-    const antes=d.tarjetas[ti].gastos.length;
-    d.tarjetas[ti].gastos=d.tarjetas[ti].gastos.filter(g=>g.cuotaOrigen!==origenId);
-    if(d.tarjetas[ti].gastos.length!==antes){sST(na,nm,d);lSave(na,nm);}
-  }
-  if(driveReady)dDebounce();
-}
-
-// ── CSV ──
 function dlCSV(){
   const mes=gM();
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
@@ -514,30 +253,6 @@ function dlCSV(){
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`gastos-${MESES[mesIdx]}-${anio}.csv`;a.click();URL.revokeObjectURL(url);
-}
-
-// ── Modal sync inicial ──
-function mostrarModalSync(){
-  const mc=document.getElementById('modal-container');
-  mc.innerHTML=`
-    <div class="modal-overlay">
-      <div class="modal-box" style="text-align:center;">
-        <div style="font-size:28px;margin-bottom:8px;">☁️</div>
-        <div class="modal-title" style="text-align:center;font-size:15px;">CONTROL DE GASTOS</div>
-        <div class="modal-info" style="text-align:center;margin-bottom:16px;">¿Sincronizar datos con Google Drive antes de comenzar?</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="btn1" id="btn-sync-init" style="width:100%;padding:10px;font-size:14px;">☁ Sincronizar con Drive</button>
-          <button class="btn2" id="btn-nosync-init" style="width:100%;padding:10px;font-size:13px;">Continuar sin sincronizar</button>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('btn-sync-init').onclick=()=>{
-    closeModal();
-    cDrive();
-  };
-  document.getElementById('btn-nosync-init').onclick=()=>{
-    closeModal();
-  };
 }
 
 // ── Toast ──
@@ -725,12 +440,8 @@ const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti
 // ── Resumen Anual ──
 function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
-  // Aplicar tema
-  const T=getT();
-  document.body.style.background=T.bodyBg;
   // Ribbon
   const rib=E('div','ribbon');
-  rib.style.background=T.ribbon;
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
   const rs=E('div');rs.style.flex='1';
   rib.append(rt,rs);app.appendChild(rib);
@@ -826,7 +537,6 @@ function render(){
   const rib=E('div','ribbon');
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
   const rs=E('div');rs.style.flex='1';
-  const thBtn=E('button','nav-btn');thBtn.textContent='🎨';thBtn.title='Cambiar tema';thBtn.onclick=mostrarSelectorTema;thBtn.style.fontSize='14px';rib.appendChild(thBtn);
   const nb=E('button','nav-btn');nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
   const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;
   const nf=E('button','nav-btn');nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
@@ -848,36 +558,36 @@ function render(){
   const ph=E('div','ph');ph.textContent=`período: ${MESES[mesIdx].toUpperCase()} ${anio}`;bl.appendChild(ph);
 
   bl.appendChild(mkRow([
-    {w:90,bg:T.greenBg,node:lbl('Sueldo',{bold:true,color:T.greenColor})},
-    {w:120,bg:T.greenBg,node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},
-    {w:26,bg:T.greenBg,node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},
-    {grow:true,bg:T.greenBg,node:E('div')},
+    {w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:T.greenColor})},
+    {w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},
+    {w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},
+    {grow:true,bg:'#E2EFDA',node:E('div')},
   ]));
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
-      {w:90,bg:T.greenBg3,node:lbl(i===0?'+ extra':'',{italic:true,color:'#375623'})},
-      {w:120,bg:T.greenBg3,node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
-      {w:26,bg:T.greenBg3,node:repB(()=>openModal('extra',`EXTRA: ${e.concepto||'(SIN NOMBRE)'}`,e.id,null,null))},
-      {grow:true,bg:T.greenBg3,node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
-      {w:26,bg:T.greenBg3,node:delB(()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)})))},
+      {w:90,bg:'#EDF7E5',node:lbl(i===0?'+ extra':'',{italic:true,color:'#375623'})},
+      {w:120,bg:'#EDF7E5',node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
+      {w:26,bg:'#EDF7E5',node:repB(()=>openModal('extra',`EXTRA: ${e.concepto||'(SIN NOMBRE)'}`,e.id,null,null))},
+      {grow:true,bg:'#EDF7E5',node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
+      {w:26,bg:'#EDF7E5',node:delB(()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)})))},
     ]));
   });
-  bl.appendChild(mkRow([{grow:true,bg:T.greenBg3,node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
+  bl.appendChild(mkRow([{grow:true,bg:'#EDF7E5',node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
 
   bl.appendChild(mkRow([
-    {w:90,bg:T.greenBg2,node:lbl('Ingreso total',{bold:true,color:T.greenColor})},
-    {grow:true,bg:T.greenBg2,node:valD(fmt(iT),{bold:true,color:T.greenColor})},
+    {w:90,bg:'#C6EFCE',node:lbl('Ingreso total',{bold:true,color:T.greenColor})},
+    {grow:true,bg:'#C6EFCE',node:valD(fmt(iT),{bold:true,color:T.greenColor})},
   ],'2px solid #AACFAA'));
 
   bl.appendChild(mkRow([
-    {w:90,bg:T.orangeBg,node:lbl('Gastos',{bold:true,color:T.orangeColor})},
-    {w:120,bg:T.orangeBg,node:valD(fmt(tG),{bold:true,color:T.orangeColor})},
-    {w:50,bg:T.orangeBg,node:(()=>{const d=E('div','val');d.style.color='#833C00';d.textContent=pct.toFixed(1)+'%';return d;})()},
+    {w:90,bg:'#FCE4D6',node:lbl('Gastos',{bold:true,color:T.orangeColor})},
+    {w:120,bg:'#FCE4D6',node:valD(fmt(tG),{bold:true,color:T.orangeColor})},
+    {w:50,bg:'#FCE4D6',node:(()=>{const d=E('div','val');d.style.color='#833C00';d.textContent=pct.toFixed(1)+'%';return d;})()},
     {grow:true,bg:'#FCE4D6',node:(()=>{const w=E('div');w.style.padding='0 8px';const b=E('div');b.style.cssText='height:10px;background:#F5CBA7;border-radius:2px;overflow:hidden;';const f=E('div');f.style.cssText=`height:100%;width:${Math.min(100,pct)}%;background:${bc};`;b.appendChild(f);w.appendChild(b);return w;})()},
   ]));
 
-  const rBg=resto>=0?T.blueBg:'#FFCCCC',rC=resto>=0?T.blueColor:'#C00000';
+  const rBg=resto>=0?'#DAEEF3':'#FFCCCC',rC=resto>=0?'#1F3864':'#C00000';
   bl.appendChild(mkRow([
     {w:90,bg:rBg,node:lbl('Resto',{bold:true,color:rC})},
     {grow:true,bg:rBg,node:valD(fmt(resto),{bold:true,color:rC})},
@@ -888,15 +598,15 @@ function render(){
   const tbl=E('div','block');cnt.appendChild(tbl);
 
   // GASTOS
-  tbl.appendChild(secHd('▸  GASTOS',T.headBg,T.headColor,tF+tT));
+  tbl.appendChild(secHd('▸  GASTOS','#D9E1F2','#1F3864',tF+tT));
   tbl.appendChild(mkRow([
-    {w:24,bg:T.headBorder,node:E('div')},
-    {w:160,bg:T.headBorder,node:thN('Concepto')},
-    {w:90,bg:T.headBorder,node:thN('Importe')},
-    {w:58,bg:T.headBorder,node:thN('Venc.','center')},
-    {w:58,bg:T.headBorder,node:thN('F.Pago','center')},
-    {w:26,bg:T.headBorder,node:E('div')},
-    {w:26,bg:T.headBorder,node:E('div')},
+    {w:24,bg:'#B4C6E7',node:E('div')},
+    {w:160,bg:'#B4C6E7',node:thN('Concepto')},
+    {w:90,bg:'#B4C6E7',node:thN('Importe')},
+    {w:58,bg:'#B4C6E7',node:thN('Venc.','center')},
+    {w:58,bg:'#B4C6E7',node:thN('F.Pago','center')},
+    {w:26,bg:'#B4C6E7',node:E('div')},
+    {w:26,bg:'#B4C6E7',node:E('div')},
   ],'2px solid #9E9E9E'));
 
   // Fila por tarjeta (con venc y fpago editables)
@@ -906,16 +616,16 @@ function render(){
     if(t.venc&&!t.fpago)vGNode.classList.add('vr');
     tbl.appendChild(mkRow([
       {w:160,bg:'#FFF0E8',node:(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#833C00;font-weight:700;cursor:default;';d.textContent=t.nombre||'(SIN NOMBRE)';return d;})()},
-      {w:90,bg:T.tarjRowBg,node:valD(fmt(totT),{bold:true,color:'#833C00'})},
+      {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
       {w:58,bg:'#FFF0E8',node:vGNode},
-      {w:58,bg:T.tarjRowBg,node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`tg${ti}p`)},
+      {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`tg${ti}p`)},
       {w:26,bg:'#FFF0E8',node:E('div')},
       {w:26,bg:'#FFF0E8',node:E('div')},
     ]));
   });
 
   mes.fijos.forEach((f,i)=>{
-    const rbg=i%2===0?T.blockBg:T.rowAlt;
+    const rbg=i%2===0?'white':'#F5F8FF';
     const vNode=mkFecha(f.venc,v=>uF(i,'venc',v),`f${i}v`);
     if(f.venc&&!f.fpago)vNode.classList.add('vr');
     const chkF=(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo(f.id)?'☑':'☐';d.title=esFijo(f.id)?'Fijo — se trae al mes siguiente':'Marcar como fijo';d.onclick=()=>toggleFijo(f.id);return d;})();
@@ -935,15 +645,15 @@ function render(){
   rowFijos.append(btnAgrFijo,btnTraerFijo);tbl.appendChild(rowFijos);
 
   // TARJETAS
-  tbl.appendChild(secHd('▸  TARJETAS DE CRÉDITO',T.tarjHeadBg,T.tarjHeadColor,tT));
+  tbl.appendChild(secHd('▸  TARJETAS DE CRÉDITO','#FCE4D6','#833C00',tT));
   tbl.appendChild(mkRow([
-    {w:24,bg:T.tarjHeadBorder,node:E('div')},
-    {w:160,bg:T.tarjHeadBorder,node:thN('Tarjeta')},
-    {w:90,bg:T.tarjHeadBorder,node:thN('Total mes')},
-    {w:58,bg:T.tarjHeadBorder,node:thN('Cierre','center')},
-    {w:58,bg:T.tarjHeadBorder,node:thN('Venc.','center')},
-    {w:58,bg:T.tarjHeadBorder,node:thN('F.Pago','center')},
-    {w:26,bg:T.tarjHeadBorder,node:E('div')},
+    {w:24,bg:'#F4B183',node:E('div')},
+    {w:160,bg:'#F4B183',node:thN('Tarjeta')},
+    {w:90,bg:'#F4B183',node:thN('Total mes')},
+    {w:58,bg:'#F4B183',node:thN('Cierre','center')},
+    {w:58,bg:'#F4B183',node:thN('Venc.','center')},
+    {w:58,bg:'#F4B183',node:thN('F.Pago','center')},
+    {w:26,bg:'#F4B183',node:E('div')},
   ],'2px solid #9E9E9E'));
 
   mes.tarjetas.forEach((t,ti)=>{
@@ -954,24 +664,24 @@ function render(){
     if(t.venc&&!t.fpago)vT.classList.add('vr');
 
     tbl.appendChild(mkRow([
-      {w:24,bg:T.tarjRowBg,node:tog},
-      {w:160,bg:T.tarjRowBg,node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
-      {w:90,bg:T.tarjRowBg,node:valD(fmt(totT),{bold:true,color:'#833C00'})},
-      {w:58,bg:T.tarjRowBg,node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
-      {w:58,bg:T.tarjRowBg,node:vT},
-      {w:58,bg:T.tarjRowBg,node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
+      {w:24,bg:'#FFF0E8',node:tog},
+      {w:160,bg:'#FFF0E8',node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
+      {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
+      {w:58,bg:'#FFF0E8',node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
+      {w:58,bg:'#FFF0E8',node:vT},
+      {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
       {w:26,bg:'#FFF0E8',node:delB(()=>confirmarEliminar(`¿Eliminar tarjeta "${t.nombre||'esta tarjeta'}"? Se eliminarán todos sus gastos.`,()=>uT(ti,'_d')))},
     ],'1px solid #C0C0C0'));
 
     if(exp){
       const isSAN=false;
       tbl.appendChild(mkRow([
-        {w:24,bg:T.tarjSubBg,node:E('div')},
-        {w:24,bg:T.tarjSubBg,node:E('div')},
-        {w:160,bg:T.tarjSubBg,node:thN('Concepto')},
-        {w:90,bg:T.tarjSubBg,node:thN('Importe x cuota')},
-        {w:58,bg:T.tarjSubBg,node:thN('Cuotas','center')},
-        {w:48,bg:T.tarjSubBg,node:thN('Nro.','center')},
+        {w:24,bg:'#FDE8D8',node:E('div')},
+        {w:24,bg:'#FDE8D8',node:E('div')},
+        {w:160,bg:'#FDE8D8',node:thN('Concepto')},
+        {w:90,bg:'#FDE8D8',node:thN('Importe x cuota')},
+        {w:58,bg:'#FDE8D8',node:thN('Cuotas','center')},
+        {w:48,bg:'#FDE8D8',node:thN('Nro.','center')},
         {w:26,bg:'#FDE8D8',node:E('div')},
         {w:26,bg:'#FDE8D8',node:E('div')},
       ],'1px solid #E0C0A0'));
