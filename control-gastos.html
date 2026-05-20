@@ -79,6 +79,13 @@ function saveFijos(){try{localStorage.setItem('fijos_globales',JSON.stringify(FI
 function toggleFijo(id){FIJOS[id]=!FIJOS[id];if(!FIJOS[id])delete FIJOS[id];saveFijos();render();}
 function esFijo(id){return!!FIJOS[id];}
 
+// Verificados: gastos marcados como controlados contra resumen tarjeta
+let VERIF={};
+try{const v=localStorage.getItem('verificados');if(v)VERIF=JSON.parse(v);}catch(e){}
+function saveVerif(){try{localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
+function toggleVerif(id){VERIF[id]=!VERIF[id];if(!VERIF[id])delete VERIF[id];saveVerif();render();}
+function esVerif(id){return!!VERIF[id];}
+
 const HISTORY=[];
 function pushHistory(){try{const snap=JSON.stringify(ST[`${anio}_${mesIdx}`]??MV());HISTORY.push({anio,mesIdx,data:snap});if(HISTORY.length>10)HISTORY.shift();}catch(e){}}
 function undoLast(){
@@ -542,9 +549,19 @@ function render(){
 
       (t.gastos||[]).forEach((g,gi)=>{
         const prop=g.cuotaNum>1&&Number(g.cuotaTotal)>1,esC=Number(g.cuotaTotal)>1;
-        const rbg=gi%2===0?'#FFFAF7':'#FFF3EC';
+        const verificado=esVerif(g.id);
+        const rbg=verificado?'#FFFDE7':(gi%2===0?'#FFFAF7':'#FFF3EC');
         const chkG=(!prop&&g.cuotaTotal<=1)?(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo('tg_'+g.id)?'☑':'☐';d.onclick=()=>toggleFijo('tg_'+g.id);return d;})():E('div');
-        tbl.appendChild(mkRow([
+        const btnVerif=(()=>{
+          const d=E('div');
+          d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;background:${verificado?'#FFD700':'transparent'};color:${verificado?'#5C4000':'#CCC'};user-select:none;border-right:1px solid #D0D0D0;`;
+          d.textContent='✓';
+          d.title=verificado?'Verificado — tocar para desmarcar':'Marcar como verificado';
+          d.onclick=(e)=>{e.stopPropagation();toggleVerif(g.id);};
+          return d;
+        })();
+        const filaG=mkRow([
+          {w:26,bg:verificado?'#FFD700':'transparent',node:btnVerif},
           {w:24,bg:rbg,node:E('div')},
           {w:24,bg:rbg,node:chkG},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
@@ -556,7 +573,8 @@ function render(){
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
             if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas','#217346');}
           }))},
-        ],'1px solid #EEE'));
+        ],'1px solid #EEE');
+        tbl.appendChild(filaG);
       });
 
       const rowG=E('div');rowG.style.cssText='display:flex;border-bottom:1px solid #DDD;';
