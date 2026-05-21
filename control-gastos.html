@@ -64,6 +64,7 @@ const VER="v15";
 const uid=()=>Math.random().toString(36).slice(2,10);
 const PL=(a,m)=>`${MESES[m]} ${a}`;
 const fmt=n=>new Intl.NumberFormat("es-AR",{maximumFractionDigits:0}).format(Number(n)||0);
+const fmtUSD=n=>new Intl.NumberFormat("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
 
 const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
   {id:"tSAN",nombre:"VISA SANTANDER",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
@@ -540,7 +541,7 @@ function render(){
       {w:24,bg:'#FFF0E8',node:tog},
       {w:160,bg:'#FFF0E8',node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
       {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
-      {w:70,bg:'#FFF0E8',node:(()=>{const d=E('div','val');d.style.cssText='color:#1565C0;font-weight:700;';d.textContent=totUSD>0?`${fmt(totUSD)} USD`:'';return d;})()},
+      {w:70,bg:'#FFF0E8',node:(()=>{const d=E('div','val');d.style.cssText='color:#1565C0;font-weight:700;';d.textContent=totUSD>0?`${fmtUSD(totUSD)} USD`:'';return d;})()},
       {w:58,bg:'#FFF0E8',node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
       {w:58,bg:'#FFF0E8',node:vT},
       {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
@@ -604,7 +605,21 @@ function render(){
             {w:24,bg:vU?'#FFFDE7':rbgU,node:E('div')},
             {w:26,bg:vU?'#FFD700':'transparent',node:btnVU},
             {w:160,bg:vU?'#FFFDE7':rbgU,node:mkCell(g.concepto,v=>uGUSD(ti,gi,'concepto',v),{placeholder:'CONCEPTO',celda:`usd${ti}-${gi}c`})},
-            {w:90,bg:vU?'#FFFDE7':rbgU,node:(()=>{const inp=mkCell(g.importe,v=>uGUSD(ti,gi,'importe',Number(v)||0),{type:'number',celda:`usd${ti}-${gi}i`});inp.style.color='#1565C0';return inp;})()},
+            {w:90,bg:vU?'#FFFDE7':rbgU,node:(()=>{
+            // Celda con decimales para USD
+            const val=g.importe;
+            const div=E('div','cv');div.dataset.celda=`usd${ti}-${gi}i`;div.style.color='#1565C0';
+            div.textContent=val&&val!==0?fmtUSD(val):'';
+            div.addEventListener('click',()=>{
+              div.innerHTML='';const inp=document.createElement('input');
+              inp.type='number';inp.step='0.01';inp.value=val||'';inp.placeholder='0.00';
+              inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;color:#1565C0;";
+              div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
+              inp.addEventListener('blur',()=>{const nv=inp.value===''?0:Number(inp.value);uGUSD(ti,gi,'importe',nv);});
+              inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}if(e.key==='Escape')render();});
+            });
+            return div;
+          })()},
             {w:26,bg:vU?'#FFFDE7':rbgU,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto USD'}"?`,()=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:(a[ti].gastosUSD||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};})))},
           ],'1px solid #BBDEFB'));
         });
