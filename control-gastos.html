@@ -66,10 +66,10 @@ const PL=(a,m)=>`${MESES[m]} ${a}`;
 const fmt=n=>new Intl.NumberFormat("es-AR",{maximumFractionDigits:0}).format(Number(n)||0);
 
 const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
-  {id:"tSAN",nombre:"VISA SANTANDER",cierre:"",venc:"",fpago:"",gastos:[]},
-  {id:"tVNA",nombre:"VISA NACIÓN",cierre:"",venc:"",fpago:"",gastos:[]},
-  {id:"tMNA",nombre:"MASTER NACIÓN",cierre:"",venc:"",fpago:"",gastos:[]},
-  {id:"tMAC",nombre:"VISA MACRO",cierre:"",venc:"",fpago:"",gastos:[]},
+  {id:"tSAN",nombre:"VISA SANTANDER",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
+  {id:"tVNA",nombre:"VISA NACIÓN",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
+  {id:"tMNA",nombre:"MASTER NACIÓN",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
+  {id:"tMAC",nombre:"VISA MACRO",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
 ]});
 
 const ST={};let vistaAnual=false;
@@ -325,6 +325,8 @@ const uE=(i,f,v)=>sM(m=>{const a=[...m.extras];a[i]={...a[i],[f]:v};return{...m,
 const uT=(ti,f,v)=>{if(f==="_d")sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});};
 const uG=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];gs[gi]={...gs[gi],[f]:v};if(f==='cuotaTotal')gs[gi].cuotaNum=1;a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});
 const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti].gastos||[]),{id:uid(),concepto:'',importe:0,cuotaTotal:1,cuotaNum:1,cuotaOrigen:null}]};return{...m,tarjetas:a};});
+const addGUSD=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:[...(a[ti].gastosUSD||[]),{id:uid(),concepto:'',importe:0}]};return{...m,tarjetas:a};});
+const uGUSD=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastosUSD||[])];gs[gi]={...gs[gi],[f]:v};a[ti]={...a[ti],gastosUSD:gs};return{...m,tarjetas:a};});
 
 function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({anio:a+Math.floor(t/12),mes:t%12});}return r;}
 
@@ -530,6 +532,7 @@ function render(){
 
   mes.tarjetas.forEach((t,ti)=>{
     const totT=(t.gastos||[]).reduce((s,g)=>s+(Number(g.importe)||0),0);
+    const totUSD=(t.gastosUSD||[]).reduce((s,g)=>s+(Number(g.importe)||0),0);
     const exp=TExp[t.id]!==false;
     const tog=E('div','tg-tog');tog.textContent=exp?'▾':'▸';tog.onclick=()=>{TExp[t.id]=!exp;render();};
     const vT=mkFecha(t.venc,v=>uT(ti,'venc',v),`t${ti}v`);if(t.venc&&!t.fpago)vT.classList.add('vr');
@@ -537,6 +540,7 @@ function render(){
       {w:24,bg:'#FFF0E8',node:tog},
       {w:160,bg:'#FFF0E8',node:mkCell(t.nombre,v=>uT(ti,'nombre',v),{bold:true,color:'#833C00',celda:`t${ti}n`})},
       {w:90,bg:'#FFF0E8',node:valD(fmt(totT),{bold:true,color:'#833C00'})},
+      {w:70,bg:'#FFF0E8',node:(()=>{const d=E('div','val');d.style.cssText='color:#1565C0;font-weight:700;';d.textContent=totUSD>0?`${fmt(totUSD)} USD`:'';return d;})()},
       {w:58,bg:'#FFF0E8',node:mkFecha(t.cierre,v=>uT(ti,'cierre',v),`t${ti}c`)},
       {w:58,bg:'#FFF0E8',node:vT},
       {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`t${ti}p`)},
@@ -580,8 +584,31 @@ function render(){
       const rowG=E('div');rowG.style.cssText='display:flex;border-bottom:1px solid #DDD;';
       const paddG=E('div');paddG.style.cssText='width:48px;flex-shrink:0;';
       const btnAG=E('div','btn-add');btnAG.style.cssText='color:#A0522D;background:#FFF5EE;flex:1;';btnAG.textContent='+ Agregar gasto';btnAG.onclick=()=>addG(ti);
+      const btnAGU=E('div','btn-add');btnAGU.style.cssText='color:#1565C0;background:#E3F2FD;border-left:1px solid #90CAF9;flex:1;justify-content:center;';btnAGU.textContent='+ USD';btnAGU.onclick=()=>addGUSD(ti);
       const btnTG=E('div','btn-add');btnTG.style.cssText='color:#375623;background:#E2EFDA;border-left:1px solid #C6E0B4;flex:1;justify-content:center;';btnTG.textContent='☑ Traer fijos';btnTG.onclick=()=>traerFijosTarjeta(t.id);
-      rowG.append(paddG,btnAG,btnTG);tbl.appendChild(rowG);
+      rowG.append(paddG,btnAG,btnAGU,btnTG);tbl.appendChild(rowG);
+
+      // Gastos en USD
+      if((t.gastosUSD||[]).length>0){
+        tbl.appendChild(mkRow([
+          {w:24,bg:'#E3F2FD',node:E('div')},{w:26,bg:'#E3F2FD',node:E('div')},
+          {w:160,bg:'#E3F2FD',node:thN('Concepto USD')},
+          {w:90,bg:'#E3F2FD',node:thN('Monto USD')},
+          {w:26,bg:'#E3F2FD',node:E('div')},
+        ],'1px solid #90CAF9'));
+        (t.gastosUSD||[]).forEach((g,gi)=>{
+          const rbgU=gi%2===0?'#F8FBFF':'#EEF6FF';
+          const vU=esVerif('usd_'+g.id);
+          const btnVU=(()=>{const d=E('div');d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;background:${vU?'#FFD700':'transparent'};color:${vU?'#5C4000':'#CCC'};`;d.textContent='✓';d.onclick=()=>toggleVerif('usd_'+g.id);return d;})();
+          tbl.appendChild(mkRow([
+            {w:24,bg:vU?'#FFFDE7':rbgU,node:E('div')},
+            {w:26,bg:vU?'#FFD700':'transparent',node:btnVU},
+            {w:160,bg:vU?'#FFFDE7':rbgU,node:mkCell(g.concepto,v=>uGUSD(ti,gi,'concepto',v),{placeholder:'CONCEPTO',celda:`usd${ti}-${gi}c`})},
+            {w:90,bg:vU?'#FFFDE7':rbgU,node:(()=>{const inp=mkCell(g.importe,v=>uGUSD(ti,gi,'importe',Number(v)||0),{type:'number',celda:`usd${ti}-${gi}i`});inp.style.color='#1565C0';return inp;})()},
+            {w:26,bg:vU?'#FFFDE7':rbgU,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto USD'}"?`,()=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:(a[ti].gastosUSD||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};})))},
+          ],'1px solid #BBDEFB'));
+        });
+      }
     }
   });
   tbl.appendChild(addB('+ Agregar tarjeta','#833C00','#FFF5EE',()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}))));
