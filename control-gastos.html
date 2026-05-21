@@ -596,11 +596,24 @@ function render(){
           {w:160,bg:'#E3F2FD',node:thN('Concepto USD')},
           {w:90,bg:'#E3F2FD',node:thN('Monto USD')},
           {w:26,bg:'#E3F2FD',node:E('div')},
+          {w:26,bg:'#E3F2FD',node:E('div')},
         ],'1px solid #90CAF9'));
         (t.gastosUSD||[]).forEach((g,gi)=>{
           const rbgU=gi%2===0?'#F8FBFF':'#EEF6FF';
           const vU=esVerif('usd_'+g.id);
           const btnVU=(()=>{const d=E('div');d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;background:${vU?'#FFD700':'transparent'};color:${vU?'#5C4000':'#CCC'};`;d.textContent='✓';d.onclick=()=>toggleVerif('usd_'+g.id);return d;})();
+          // Replicar gasto USD a meses siguientes
+          const replUSD=()=>{
+            const ps=pSig(anio,mesIdx);const opts=ps.map((p,i)=>`<option value="${i}">${PL(p.anio,p.mes)}</option>`).join('');
+            document.getElementById('modal-container').innerHTML=`
+              <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
+                <div class="modal-title">Replicar: ${g.concepto||'(SIN NOMBRE)'} USD</div>
+                <div class="modal-info">Desde <b>${PL(anio,mesIdx)}</b> hasta:</div>
+                <select id="hsel-usd" class="modal-select">${opts}</select>
+                <div class="modal-btns"><button class="btn2" onclick="closeModal()">Cancelar</button>
+                <button class="btn1" onclick="(async()=>{closeModal();const ps2=pSig(anio,mesIdx);const sel=ps2.slice(0,Number(document.getElementById('hsel-usd')?.value||0)+1);let ok=0;sel.forEach(({anio:a,mes:m})=>{if(!gST(a,m))lLoad(a,m);let d=gST(a,m)??MV();const ti2=d.tarjetas.findIndex(t2=>t2.id==='${t.id}');if(ti2!==-1){if(!d.tarjetas[ti2].gastosUSD)d.tarjetas[ti2].gastosUSD=[];const existe=d.tarjetas[ti2].gastosUSD.find(x=>x.concepto===g.concepto);if(!existe){d.tarjetas[ti2].gastosUSD.push({id:uid(),concepto:g.concepto,importe:g.importe});sST(a,m,d);lSave(a,m);ok++;}}});if(driveReady)dDebounce();toast('✓ Replicado en '+ok+' período'+(ok!==1?'s':''),'#217346');})()">Replicar →</button></div>
+              </div></div>`;
+          };
           tbl.appendChild(mkRow([
             {w:24,bg:vU?'#FFFDE7':rbgU,node:E('div')},
             {w:26,bg:vU?'#FFD700':'transparent',node:btnVU},
@@ -620,6 +633,7 @@ function render(){
             });
             return div;
           })()},
+            {w:26,bg:vU?'#FFFDE7':rbgU,node:repB(()=>replUSD())},
             {w:26,bg:vU?'#FFFDE7':rbgU,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto USD'}"?`,()=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:(a[ti].gastosUSD||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};})))},
           ],'1px solid #BBDEFB'));
         });
