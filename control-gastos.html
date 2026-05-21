@@ -604,15 +604,39 @@ function render(){
           const btnVU=(()=>{const d=E('div');d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;background:${vU?'#FFD700':'transparent'};color:${vU?'#5C4000':'#CCC'};`;d.textContent='✓';d.onclick=()=>toggleVerif('usd_'+g.id);return d;})();
           // Replicar gasto USD a meses siguientes
           const replUSD=()=>{
-            const ps=pSig(anio,mesIdx);const opts=ps.map((p,i)=>`<option value="${i}">${PL(p.anio,p.mes)}</option>`).join('');
-            document.getElementById('modal-container').innerHTML=`
-              <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
-                <div class="modal-title">Replicar: ${g.concepto||'(SIN NOMBRE)'} USD</div>
-                <div class="modal-info">Desde <b>${PL(anio,mesIdx)}</b> hasta:</div>
-                <select id="hsel-usd" class="modal-select">${opts}</select>
-                <div class="modal-btns"><button class="btn2" onclick="closeModal()">Cancelar</button>
-                <button class="btn1" onclick="(async()=>{closeModal();const ps2=pSig(anio,mesIdx);const sel=ps2.slice(0,Number(document.getElementById('hsel-usd')?.value||0)+1);let ok=0;sel.forEach(({anio:a,mes:m})=>{if(!gST(a,m))lLoad(a,m);let d=gST(a,m)??MV();const ti2=d.tarjetas.findIndex(t2=>t2.id==='${t.id}');if(ti2!==-1){if(!d.tarjetas[ti2].gastosUSD)d.tarjetas[ti2].gastosUSD=[];const existe=d.tarjetas[ti2].gastosUSD.find(x=>x.concepto===g.concepto);if(!existe){d.tarjetas[ti2].gastosUSD.push({id:uid(),concepto:g.concepto,importe:g.importe});sST(a,m,d);lSave(a,m);ok++;}}});if(driveReady)dDebounce();toast('✓ Replicado en '+ok+' período'+(ok!==1?'s':''),'#217346');})()">Replicar →</button></div>
-              </div></div>`;
+            const tarjetaId=t.id;
+            const gConcepto=g.concepto;
+            const gImporte=g.importe;
+            const ps=pSig(anio,mesIdx);
+            const opts=ps.map((p,i)=>`<option value="${i}">${PL(p.anio,p.mes)}</option>`).join('');
+            const mc=document.getElementById('modal-container');
+            mc.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
+              <div class="modal-title">Replicar USD: ${g.concepto||'(SIN NOMBRE)'}</div>
+              <div class="modal-info">Desde <b>${PL(anio,mesIdx)}</b> hasta:</div>
+              <select id="hsel-usd" class="modal-select">${opts}</select>
+              <div class="modal-btns">
+                <button class="btn2" id="btn-cancel-usd">Cancelar</button>
+                <button class="btn1" id="btn-rep-usd">Replicar →</button>
+              </div></div></div>`;
+            document.getElementById('btn-cancel-usd').onclick=()=>closeModal();
+            document.getElementById('btn-rep-usd').onclick=()=>{
+              const selVal=Number(document.getElementById('hsel-usd')?.value||0);
+              closeModal();
+              const sel=ps.slice(0,selVal+1);
+              let ok=0;
+              sel.forEach(({anio:a,mes:m})=>{
+                if(!gST(a,m))lLoad(a,m);
+                const d=gST(a,m)??MV();
+                const ti2=d.tarjetas.findIndex(t2=>t2.id===tarjetaId);
+                if(ti2!==-1){
+                  if(!d.tarjetas[ti2].gastosUSD)d.tarjetas[ti2].gastosUSD=[];
+                  const existe=d.tarjetas[ti2].gastosUSD.find(x=>x.concepto===gConcepto);
+                  if(!existe){d.tarjetas[ti2].gastosUSD.push({id:uid(),concepto:gConcepto,importe:gImporte});sST(a,m,d);lSave(a,m);ok++;}
+                }
+              });
+              if(driveReady)dDebounce();
+              toast('✓ Replicado en '+ok+' período'+(ok!==1?'s':''),'#217346');
+            };
           };
           tbl.appendChild(mkRow([
             {w:24,bg:vU?'#FFFDE7':rbgU,node:E('div')},
