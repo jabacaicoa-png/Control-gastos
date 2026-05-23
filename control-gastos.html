@@ -497,6 +497,7 @@ function render(){
 
   mes.tarjetas.forEach((t,ti)=>{
     const totT=(t.gastos||[]).reduce((s,g)=>s+(Number(g.importe)||0),0);
+    const totUSDg=(t.gastosUSD||[]).reduce((s,g)=>s+(Number(g.importe)||0),0);
     const vGNode=mkFecha(t.venc,v=>uT(ti,'venc',v),`tg${ti}v`);if(t.venc&&!t.fpago)vGNode.classList.add('vr');
     tbl.appendChild(mkRow([
       {w:24,bg:'#FFF0E8',node:E('div')},
@@ -506,6 +507,16 @@ function render(){
       {w:58,bg:'#FFF0E8',node:mkFecha(t.fpago,v=>uT(ti,'fpago',v),`tg${ti}p`)},
       {w:26,bg:'#FFF0E8',node:E('div')},{w:26,bg:'#FFF0E8',node:E('div')},
     ]));
+    if(totUSDg>0){
+      tbl.appendChild(mkRow([
+        {w:24,bg:'#EEF6FF',node:E('div')},
+        {w:160,bg:'#EEF6FF',node:E('div')},
+        {w:90,bg:'#EEF6FF',node:(()=>{const d=E('div','val');d.style.cssText='color:#1565C0;font-weight:700;font-size:12px;';d.textContent=fmtUSD(totUSDg)+' USD';return d;})()},
+        {w:58,bg:'#EEF6FF',node:E('div')},
+        {w:58,bg:'#EEF6FF',node:E('div')},
+        {w:26,bg:'#EEF6FF',node:E('div')},{w:26,bg:'#EEF6FF',node:E('div')},
+      ],'1px solid #BBDEFB'));
+    }
   });
 
   mes.fijos.forEach((f,i)=>{
