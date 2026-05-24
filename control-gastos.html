@@ -325,6 +325,14 @@ const uF=(i,f,v)=>sM(m=>{const a=[...m.fijos];a[i]={...a[i],[f]:v};return{...m,f
 const uE=(i,f,v)=>sM(m=>{const a=[...m.extras];a[i]={...a[i],[f]:v};return{...m,extras:a};});
 const uT=(ti,f,v)=>{if(f==="_d")sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});};
 const uG=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];gs[gi]={...gs[gi],[f]:v};if(f==='cuotaTotal')gs[gi].cuotaNum=1;a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});
+// Replicar cuotas automáticamente cuando se carga cuotaTotal > 1
+async function autoReplicarCuotas(ti,gi){
+  const mes=gM();const t=mes.tarjetas[ti];const g=t.gastos[gi];
+  if(!g||Number(g.cuotaTotal)<=1)return;
+  const ps=pSig(anio,mesIdx).slice(0,Number(g.cuotaTotal)-1);
+  await replic({tipo:'tarjetaGasto',periodos:ps,itemId:g.id,tarjetaId:t.id});
+  toast(`✓ ${g.cuotaTotal} cuotas creadas automáticamente`,'#217346');
+}
 const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti].gastos||[]),{id:uid(),concepto:'',importe:0,cuotaTotal:1,cuotaNum:1,cuotaOrigen:null}]};return{...m,tarjetas:a};});
 const addGUSD=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:[...(a[ti].gastosUSD||[]),{id:uid(),concepto:'',importe:0}]};return{...m,tarjetas:a};});
 const uGUSD=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastosUSD||[])];gs[gi]={...gs[gi],[f]:v};a[ti]={...a[ti],gastosUSD:gs};return{...m,tarjetas:a};});
@@ -582,9 +590,9 @@ function render(){
           {w:24,bg:rbg,node:chkG},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
           {w:90,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=fmt(g.importe);return d;})():mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`})},
-          {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>uG(ti,gi,'cuotaTotal',Math.max(1,Number(v)||1)),{type:'number',celda:`tg${ti}-${gi}ct`})},
+          {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>{const nv=Math.max(1,Number(v)||1);uG(ti,gi,'cuotaTotal',nv);if(nv>1)setTimeout(()=>autoReplicarCuotas(ti,gi),300);},{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
-          {w:26,bg:rbg,node:(!prop&&g.cuotaTotal<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
+          {w:26,bg:rbg,node:(!prop&&Number(g.cuotaTotal)<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
           {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto'}"?`+((!prop&&g.cuotaTotal>1)?' Se eliminarán las cuotas siguientes.':''),async()=>{
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
             if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas','#217346');}
