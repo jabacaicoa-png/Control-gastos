@@ -675,9 +675,13 @@ function render(){
               toast('✓ Replicado en '+ok+' período'+(ok!==1?'s':''),'#217346');
             };
           };
+          const vDA=esDebito('usd_'+g.id);
+          const rbgU2=vU?'#FFFDE7':vDA?'#F0FFF0':rbgU;
+          const btnDAU=(()=>{const d=E('div');d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;flex-shrink:0;background:${vDA?'#217346':'transparent'};color:${vDA?'white':'#CCC'};`;d.textContent='DA';d.onclick=()=>toggleDebito('usd_'+g.id);return d;})();
           tbl.appendChild(mkRow([
-            {w:24,bg:vU?'#FFFDE7':rbgU,node:E('div')},
+            {w:24,bg:rbgU2,node:E('div')},
             {w:26,bg:vU?'#FFD700':'transparent',node:btnVU},
+            {w:26,bg:vDA?'#217346':'transparent',node:btnDAU},
             {w:160,bg:vU?'#FFFDE7':rbgU,node:mkCell(g.concepto,v=>uGUSD(ti,gi,'concepto',v),{placeholder:'CONCEPTO',celda:`usd${ti}-${gi}c`})},
             {w:90,bg:vU?'#FFFDE7':rbgU,node:(()=>{
             // Celda con decimales para USD
