@@ -87,6 +87,13 @@ function saveVerif(){try{localStorage.setItem('verificados',JSON.stringify(VERIF
 function toggleVerif(id){VERIF[id]=!VERIF[id];if(!VERIF[id])delete VERIF[id];saveVerif();render();}
 function esVerif(id){return!!VERIF[id];}
 
+// Débitos automáticos
+let DEBITOS={};
+try{const d=localStorage.getItem('debitos_auto');if(d)DEBITOS=JSON.parse(d);}catch(e){}
+function saveDebitos(){try{localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
+function toggleDebito(id){DEBITOS[id]=!DEBITOS[id];if(!DEBITOS[id])delete DEBITOS[id];saveDebitos();render();}
+function esDebito(id){return!!DEBITOS[id];}
+
 const HISTORY=[];
 function pushHistory(){try{const snap=JSON.stringify(ST[`${anio}_${mesIdx}`]??MV());HISTORY.push({anio,mesIdx,data:snap});if(HISTORY.length>10)HISTORY.shift();}catch(e){}}
 function undoLast(){
@@ -574,7 +581,8 @@ function render(){
       (t.gastos||[]).forEach((g,gi)=>{
         const prop=g.cuotaNum>1&&Number(g.cuotaTotal)>1,esC=Number(g.cuotaTotal)>1;
         const verificado=esVerif(g.id);
-        const rbg=verificado?'#FFFDE7':(gi%2===0?'#FFFAF7':'#FFF3EC');
+        const debito=esDebito(g.id);
+        const rbg=verificado?'#FFFDE7':debito?'#F0FFF0':(gi%2===0?'#FFFAF7':'#FFF3EC');
         const chkG=(!prop&&g.cuotaTotal<=1)?(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo('tg_'+g.id)?'☑':'☐';d.onclick=()=>toggleFijo('tg_'+g.id);return d;})():E('div');
         const btnVerif=(()=>{
           const d=E('div');
@@ -584,8 +592,17 @@ function render(){
           d.onclick=(e)=>{e.stopPropagation();toggleVerif(g.id);};
           return d;
         })();
+        const btnDA=(()=>{
+          const d=E('div');
+          d.style.cssText=`width:26px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;flex-shrink:0;background:${debito?'#217346':'transparent'};color:${debito?'white':'#CCC'};user-select:none;border-right:1px solid #D0D0D0;`;
+          d.textContent='DA';
+          d.title=debito?'Débito automático — tocar para desmarcar':'Marcar como débito automático';
+          d.onclick=(e)=>{e.stopPropagation();toggleDebito(g.id);};
+          return d;
+        })();
         const filaG=mkRow([
           {w:26,bg:verificado?'#FFD700':'transparent',node:btnVerif},
+          {w:26,bg:debito?'#217346':'transparent',node:btnDA},
           {w:24,bg:rbg,node:E('div')},
           {w:24,bg:rbg,node:chkG},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
@@ -614,6 +631,7 @@ function render(){
           {w:24,bg:'#E3F2FD',node:E('div')},{w:26,bg:'#E3F2FD',node:E('div')},
           {w:160,bg:'#E3F2FD',node:thN('Concepto USD')},
           {w:90,bg:'#E3F2FD',node:thN('Monto USD')},
+          {w:26,bg:'#E3F2FD',node:E('div')},
           {w:26,bg:'#E3F2FD',node:E('div')},
           {w:26,bg:'#E3F2FD',node:E('div')},
         ],'1px solid #90CAF9'));
