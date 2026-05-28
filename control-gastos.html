@@ -145,7 +145,8 @@ function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeou
 
 async function dSaveAll(){
   if(!driveReady||!accessToken)return;
-  const body=JSON.stringify(ST);
+  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS};
+  const body=JSON.stringify(backup);
   try{
     if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
     else{
@@ -165,7 +166,13 @@ async function dLoad(){
     if(r.files&&r.files.length>0){
       driveFileId=r.files[0].id;
       const dd=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{'Authorization':'Bearer '+accessToken}}).then(r=>r.json());
-      const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
+      // Restaurar marcadores globales desde Drive
+      if(dd.__fijos){try{Object.assign(FIJOS,dd.__fijos);localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
+      if(dd.__verif){try{Object.assign(VERIF,dd.__verif);localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
+      if(dd.__debitos){try{Object.assign(DEBITOS,dd.__debitos);localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
+      // Merge datos de meses
+      const skipKeys=new Set(['__fijos','__verif','__debitos']);
+      const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
       all.forEach(k=>{const tk=`__ts_${k}`;const lt=ST[tk]||0;const dt=dd[tk]||0;if(dt>lt){if(dd[k]!==undefined){ST[k]=dd[k];ST[tk]=dt;}}else if(!lt&&!dt){if(dd[k]!==undefined)ST[k]=dd[k];}});
       Object.keys(ST).forEach(k=>{if(!k.startsWith('__ts_')){const p=k.split('_');if(p.length>=2)try{localStorage.setItem(lKey(p[0],p[1]),JSON.stringify(ST[k]));}catch(e){}}});
       toast('✓ Datos cargados desde Drive','#217346');render();
