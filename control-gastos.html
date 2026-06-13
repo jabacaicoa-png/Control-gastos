@@ -294,6 +294,16 @@ async function confirmRep(tipo,itemId,tarjetaId,cuotaTotal,esC){
   toast(msg||'Sin cambios',conf.length>0?'#7F4F00':'#1F3864');
 }
 
+function actualizarMesFecha(fecha, mesDestino){
+  // fecha: "28/06", mesDestino: 0-11
+  if(!fecha||!fecha.trim())return '';
+  const m=fecha.match(/^(\d{2})\/(\d{2})$/);
+  if(!m)return fecha;
+  const dia=m[1];
+  const mesStr=String(mesDestino+1).padStart(2,'0');
+  return `${dia}/${mesStr}`;
+}
+
 function parseFecha(raw){
   if(!raw||!raw.trim())return{ok:true,val:''};
   let s=raw.trim(),dia,mes;
@@ -410,7 +420,7 @@ async function replic({tipo,periodos,itemId,tarjetaId}){
     let d=gST(a,m)??MV();let mod=false;const lb=PL(a,m);
     if(tipo==="sueldo"){if(d.sueldo!==0&&d.sueldo!==payload)conf.push(`${lb}: Sueldo ya tiene $${fmt(d.sueldo)}`);else{d.sueldo=payload;mod=true;}}
     else if(tipo==="extra"){const idx=d.extras.findIndex(e=>e.id===itemId);if(idx!==-1){if(d.extras[idx].importe!==0&&d.extras[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.extras[idx].importe)}`);else{d.extras[idx]={...d.extras[idx],...payload};mod=true;}}else{d.extras.push({...payload,id:uid()});mod=true;}}
-    else if(tipo==="fijo"){const idx=d.fijos.findIndex(f=>f.id===itemId);if(idx!==-1){if(d.fijos[idx].importe!==0&&d.fijos[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.fijos[idx].importe)}`);else{d.fijos[idx]={...d.fijos[idx],...payload};mod=true;}}else{d.fijos.push({...payload,id:uid()});mod=true;}}
+    else if(tipo==="fijo"){const idx=d.fijos.findIndex(f=>f.id===itemId);if(idx!==-1){if(d.fijos[idx].importe!==0&&d.fijos[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.fijos[idx].importe)}`);else{d.fijos[idx]={...d.fijos[idx],...payload,venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)};mod=true;}}else{d.fijos.push({...payload,id:uid(),venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)});mod=true;}}
     else if(tipo==="tarjetaGasto"){
       let ti=d.tarjetas.findIndex(t=>t.id===tarjetaId);
       if(ti===-1){d.tarjetas.push({id:tarjetaId,nombre:tarjetaId,cierre:"",venc:"",fpago:"",gastos:[]});ti=d.tarjetas.length-1;}
@@ -441,7 +451,16 @@ function traerFijosAnteriores(seccion){
     if(!gST(aa,ma))lLoad(aa,ma);const anterior=gST(aa,ma);
     if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
     const nuevos=[...gM().fijos];let traidos=0;
-    (anterior.fijos||[]).forEach(f=>{if(!esFijo(f.id))return;if(!nuevos.find(x=>x.id===f.id)){nuevos.push({...f});traidos++;}});
+    (anterior.fijos||[]).forEach(f=>{
+      if(!esFijo(f.id))return;
+      if(!nuevos.find(x=>x.id===f.id)){
+        const fActualizado={...f,
+          venc:actualizarMesFecha(f.venc,mesIdx),
+          fpago:actualizarMesFecha(f.fpago,mesIdx),
+        };
+        nuevos.push(fActualizado);traidos++;
+      }
+    });
     if(traidos>0){sM(m=>({...m,fijos:nuevos}));toast('✓ Fijos traídos','#217346');}
     else toast('No hay fijos nuevos para traer','#1F3864');
   });
