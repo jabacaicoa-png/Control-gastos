@@ -242,6 +242,31 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
+function editModal(label, val, onSave, tipo='text'){
+  const mc=document.getElementById('modal-container');
+  mc.innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-title">Editar: ${label}</div>
+        <input id="edit-modal-inp" type="${tipo==='number'?'number':'text'}" 
+          style="width:100%;padding:10px;font-size:16px;font-family:'Courier New',monospace;font-weight:700;border:2px solid #1F3864;outline:none;text-transform:${tipo==='number'?'none':'uppercase'};"
+          value="${String(val||'').replace(/"/g,'&quot;')}"/>
+        <div class="modal-btns" style="margin-top:12px;">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" id="btn-edit-save">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  const inp=document.getElementById('edit-modal-inp');
+  setTimeout(()=>{inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);},100);
+  if(tipo!=='number')inp.addEventListener('input',()=>{const p=inp.selectionStart;inp.value=inp.value.toUpperCase();inp.setSelectionRange(p,p);});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('btn-edit-save').click();}if(e.key==='Escape')closeModal();});
+  document.getElementById('btn-edit-save').onclick=()=>{
+    const nv=tipo==='number'?(inp.value===''?0:Number(inp.value)):inp.value.toUpperCase();
+    closeModal();onSave(nv);
+  };
+}
+
 let _cb=null,_cm='';
 function confirmarEliminar(mensaje,onConfirm){
   _cb=onConfirm;_cm=mensaje;
@@ -300,16 +325,21 @@ function mkCell(val,onChange,opts={}){
   const div=document.createElement('div');div.className='cv';div.dataset.celda=celda;
   div.style.fontWeight=bold?'700':'400';div.style.color=color;div.textContent=display||'';
   div.addEventListener('click',()=>{
-    div.innerHTML='';const inp=document.createElement('input');
-    inp.type=type==='number'?'number':'text';inp.value=val||'';inp.placeholder=placeholder;
-    inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
-    div.appendChild(inp);setTimeout(()=>{inp.focus();if(type==='number'||!val){inp.select();}else{inp.setSelectionRange(inp.value.length,inp.value.length);}},50);
-    if(type!=='number')inp.addEventListener('input',()=>{const p=inp.selectionStart;inp.value=inp.value.toUpperCase();inp.setSelectionRange(p,p);});
-    inp.addEventListener('blur',()=>{const nv=type==='number'?(inp.value===''?0:Number(inp.value)):inp.value.toUpperCase();onChange(nv);});
-    inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();const nv=type==='number'?(inp.value===''?0:Number(inp.value)):inp.value.toUpperCase();onChange(nv);setTimeout(()=>{const all=[...document.querySelectorAll('[data-celda]')];const cur=all.findIndex(el=>el.dataset.celda===celda);if(cur!==-1&&cur+1<all.length)all[cur+1].click();},30);}
-      if(e.key==='Escape')render();
-    });
+    if(type!=='number'){
+      // Texto: usar modal para edición cómoda en móvil
+      editModal(placeholder||'Editar',val,(nv)=>{onChange(nv);},'text');
+    } else {
+      // Número: edición inline como antes
+      div.innerHTML='';const inp=document.createElement('input');
+      inp.type='number';inp.value=val||'';inp.placeholder=placeholder;
+      inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
+      div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
+      inp.addEventListener('blur',()=>{const nv=inp.value===''?0:Number(inp.value);onChange(nv);});
+      inp.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){e.preventDefault();const nv=inp.value===''?0:Number(inp.value);onChange(nv);setTimeout(()=>{const all=[...document.querySelectorAll('[data-celda]')];const cur=all.findIndex(el=>el.dataset.celda===celda);if(cur!==-1&&cur+1<all.length)all[cur+1].click();},30);}
+        if(e.key==='Escape')render();
+      });
+    }
   });
   return div;
 }
