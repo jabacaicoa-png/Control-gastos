@@ -242,6 +242,44 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
+function aumentoModal(sueldoActual, onSave){
+  const mc=document.getElementById('modal-container');
+  mc.innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-title">% Aumento de sueldo</div>
+        <div class="modal-info">Sueldo actual: <b>${fmt(sueldoActual)}</b></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <input id="pct-inp" type="number" min="0" max="999" step="0.1"
+            style="flex:1;padding:10px;font-size:20px;font-family:'Courier New',monospace;font-weight:700;border:2px solid #1F3864;outline:none;text-align:center;"
+            placeholder="0"/>
+          <span style="font-size:20px;font-weight:700;">%</span>
+        </div>
+        <div id="pct-preview" style="font-size:13px;color:#375623;font-weight:700;margin-bottom:12px;text-align:center;"></div>
+        <div class="modal-btns">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" id="btn-pct-save">Aplicar</button>
+        </div>
+      </div>
+    </div>`;
+  const inp=document.getElementById('pct-inp');
+  const prev=document.getElementById('pct-preview');
+  const calcular=()=>{
+    const pct=Number(inp.value)||0;
+    const nuevo=Math.round(sueldoActual*(1+pct/100));
+    prev.textContent=pct>0?`Nuevo sueldo: ${fmt(nuevo)}`:'';
+    return nuevo;
+  };
+  inp.addEventListener('input',calcular);
+  setTimeout(()=>{inp.focus();},100);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('btn-pct-save').click();}if(e.key==='Escape')closeModal();});
+  document.getElementById('btn-pct-save').onclick=()=>{
+    const nuevo=calcular();
+    if(Number(inp.value)>0){closeModal();onSave(nuevo);}
+    else closeModal();
+  };
+}
+
 function editModal(label, val, onSave, tipo='text'){
   const mc=document.getElementById('modal-container');
   mc.innerHTML=`
@@ -556,7 +594,8 @@ function render(){
   const bl=E('div','block');
   const ph=E('div','ph');ph.textContent=`período: ${MESES[mesIdx].toUpperCase()} ${anio}`;bl.appendChild(ph);
 
-  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
+  const btnPct=(()=>{const d=E('div');d.style.cssText='width:32px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent='%';d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
+  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:32,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
