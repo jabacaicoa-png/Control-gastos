@@ -149,7 +149,7 @@ function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeou
 
 async function dSaveAll(){
   if(!driveReady||!accessToken)return;
-  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS};
+  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS};
   const body=JSON.stringify(backup);
   try{
     if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
@@ -174,6 +174,7 @@ async function dLoad(){
       if(dd.__fijos){try{Object.assign(FIJOS,dd.__fijos);localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
       if(dd.__verif){try{Object.assign(VERIF,dd.__verif);localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
       if(dd.__debitos){try{Object.assign(DEBITOS,dd.__debitos);localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
+      if(dd.__aumentos){try{Object.assign(AUMENTOS,dd.__aumentos);localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
       // Merge datos de meses
       const skipKeys=new Set(['__fijos','__verif','__debitos']);
       const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
