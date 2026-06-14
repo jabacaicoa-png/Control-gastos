@@ -107,6 +107,10 @@ function undoLast(){
 }
 
 let _lp={anio:2026,mes:new Date().getMonth()};
+let AUMENTOS={};
+try{const a=localStorage.getItem('aumentos_sueldo');if(a)AUMENTOS=JSON.parse(a);}catch(e){}
+function saveAumento(a,m,pct){AUMENTOS[`${a}_${m}`]=pct;try{localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
+function getAumento(a,m){return AUMENTOS[`${a}_${m}`]||0;}
 try{const lp=localStorage.getItem('lastPeriod');if(lp){const p=JSON.parse(lp);_lp=p;}}catch(e){}
 let anio=_lp.anio,mesIdx=_lp.mes,driveFileId=null,driveReady=false,accessToken=null,TExp={};
 const gST=(a,m)=>ST[`${a}_${m}`]??null;
@@ -274,8 +278,9 @@ function aumentoModal(sueldoActual, onSave){
   setTimeout(()=>{inp.focus();},100);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('btn-pct-save').click();}if(e.key==='Escape')closeModal();});
   document.getElementById('btn-pct-save').onclick=()=>{
+    const pct=Number(inp.value)||0;
     const nuevo=calcular();
-    if(Number(inp.value)>0){closeModal();onSave(nuevo);}
+    if(pct>0){closeModal();saveAumento(anio,mesIdx,pct);onSave(nuevo);}
     else closeModal();
   };
 }
@@ -594,8 +599,9 @@ function render(){
   const bl=E('div','block');
   const ph=E('div','ph');ph.textContent=`período: ${MESES[mesIdx].toUpperCase()} ${anio}`;bl.appendChild(ph);
 
-  const btnPct=(()=>{const d=E('div');d.style.cssText='width:32px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent='%';d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
-  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:32,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
+  const pctActual=getAumento(anio,mesIdx);
+  const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctActual>0?`${pctActual}%`:'%';d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
+  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
