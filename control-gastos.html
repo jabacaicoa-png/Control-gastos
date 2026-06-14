@@ -247,31 +247,37 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
 function navegarPeriodoModal(){
-  const anios=[2024,2025,2026,2027,2028];
-  const mesesOpts=MESES.map((m,i)=>`<option value="${i}" ${i===mesIdx?'selected':''}>${m}</option>`).join('');
-  const aniosOpts=anios.map(a=>`<option value="${a}" ${a===anio?'selected':''}>${a}</option>`).join('');
-  document.getElementById('modal-container').innerHTML=`
-    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-      <div class="modal-box">
-        <div class="modal-title">Ir a período</div>
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-          <select id="nav-mes" class="modal-select" style="flex:2;margin:0;">${mesesOpts}</select>
-          <select id="nav-anio" class="modal-select" style="flex:1;margin:0;">${aniosOpts}</select>
+  const MC=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let anioNav=anio;
+  window.cambiarAnioNav=(dir)=>{anioNav+=dir;renderNav();};
+  window.irPeriodo=(m,a)=>{closeModal();mesIdx=m;anio=a;try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
+  const renderNav=()=>{
+    let filas='';
+    for(let f=0;f<4;f++){
+      filas+='<div style="display:flex;">';
+      for(let c=0;c<3;c++){
+        const m=f*3+c;
+        const ea=m===mesIdx&&anioNav===anio;
+        filas+=`<div onclick="irPeriodo(${m},${anioNav})" style="flex:1;padding:10px 0;text-align:center;cursor:pointer;font-weight:700;font-family:'Courier New',monospace;font-size:14px;border-radius:3px;background:${ea?'#217346':'#F5F5F5'};color:${ea?'white':'#333'};border:2px solid ${ea?'#217346':'#DDD'};margin:3px;">${MC[m]}</div>`;
+      }
+      filas+='</div>';
+    }
+    document.getElementById('modal-container').innerHTML=`
+      <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <button onclick="cambiarAnioNav(-1)" style="background:#1F3864;color:white;border:none;width:36px;height:36px;font-size:18px;cursor:pointer;border-radius:3px;">◀</button>
+            <span style="font-size:18px;font-weight:700;color:#1F3864;">${anioNav}</span>
+            <button onclick="cambiarAnioNav(1)" style="background:#1F3864;color:white;border:none;width:36px;height:36px;font-size:18px;cursor:pointer;border-radius:3px;">▶</button>
+          </div>
+          ${filas}
+          <div style="margin-top:12px;text-align:right;">
+            <button class="btn2" onclick="closeModal()">Cancelar</button>
+          </div>
         </div>
-        <div class="modal-btns">
-          <button class="btn2" onclick="closeModal()">Cancelar</button>
-          <button class="btn1" id="btn-nav-ir">Ir →</button>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('btn-nav-ir').onclick=()=>{
-    const m=Number(document.getElementById('nav-mes').value);
-    const a=Number(document.getElementById('nav-anio').value);
-    closeModal();
-    mesIdx=m;anio=a;
-    try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}
-    lLoad(anio,mesIdx);render();
+      </div>`;
   };
+  renderNav();
 }
 
 function getSueldoAnterior(){
