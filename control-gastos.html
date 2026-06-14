@@ -615,7 +615,7 @@ function render(){
   const pctActual=getAumento(anio,mesIdx);
   const pctStr=AUMENTOS.hasOwnProperty(`${anio}_${mesIdx}`)?`${pctActual}%`:'%';
   const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctStr;d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
-  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
+  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Ingreso',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
