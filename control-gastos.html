@@ -246,6 +246,34 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
+function navegarPeriodoModal(){
+  const anios=[2024,2025,2026,2027,2028];
+  const mesesOpts=MESES.map((m,i)=>`<option value="${i}" ${i===mesIdx?'selected':''}>${m}</option>`).join('');
+  const aniosOpts=anios.map(a=>`<option value="${a}" ${a===anio?'selected':''}>${a}</option>`).join('');
+  document.getElementById('modal-container').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-title">Ir a período</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <select id="nav-mes" class="modal-select" style="flex:2;margin:0;">${mesesOpts}</select>
+          <select id="nav-anio" class="modal-select" style="flex:1;margin:0;">${aniosOpts}</select>
+        </div>
+        <div class="modal-btns">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" id="btn-nav-ir">Ir →</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('btn-nav-ir').onclick=()=>{
+    const m=Number(document.getElementById('nav-mes').value);
+    const a=Number(document.getElementById('nav-anio').value);
+    closeModal();
+    mesIdx=m;anio=a;
+    try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}
+    lLoad(anio,mesIdx);render();
+  };
+}
+
 function getSueldoAnterior(){
   let ma=mesIdx-1,aa=anio;
   if(ma<0){ma=11;aa=anio-1;}
@@ -597,7 +625,7 @@ function render(){
   const rib=E('div','ribbon');
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';const rs=E('div');rs.style.flex='1';
   const nb=E('button','nav-btn');nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
-  const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;
+  const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;nm.style.cursor='pointer';nm.title='Tocar para ir a un período';nm.onclick=()=>navegarPeriodoModal();
   const nf=E('button','nav-btn');nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
   rib.append(rt,rs,nb,nm,nf);app.appendChild(rib);
 
