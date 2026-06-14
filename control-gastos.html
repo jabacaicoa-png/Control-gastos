@@ -246,17 +246,27 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
 }
 function closeModal(){document.getElementById('modal-container').innerHTML='';}
 
+function getSueldoAnterior(){
+  let ma=mesIdx-1,aa=anio;
+  if(ma<0){ma=11;aa=anio-1;}
+  if(!gST(aa,ma))lLoad(aa,ma);
+  const ant=gST(aa,ma);
+  return Number(ant?.sueldo)||0;
+}
+
 function aumentoModal(sueldoActual, onSave){
   const mc=document.getElementById('modal-container');
+  const sueldoBase=getSueldoAnterior()||sueldoActual;
+  const pctGuardado=getAumento(anio,mesIdx);
   mc.innerHTML=`
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal-box">
         <div class="modal-title">% Aumento de sueldo</div>
-        <div class="modal-info">Sueldo actual: <b>${fmt(sueldoActual)}</b></div>
+        <div class="modal-info">Base (mes anterior): <b>${fmt(sueldoBase)}</b></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <input id="pct-inp" type="number" min="0" max="999" step="0.1"
             style="flex:1;padding:10px;font-size:20px;font-family:'Courier New',monospace;font-weight:700;border:2px solid #1F3864;outline:none;text-align:center;"
-            placeholder="0"/>
+            placeholder="0" value="${pctGuardado||''}"/>
           <span style="font-size:20px;font-weight:700;">%</span>
         </div>
         <div id="pct-preview" style="font-size:13px;color:#375623;font-weight:700;margin-bottom:12px;text-align:center;"></div>
@@ -270,18 +280,21 @@ function aumentoModal(sueldoActual, onSave){
   const prev=document.getElementById('pct-preview');
   const calcular=()=>{
     const pct=Number(inp.value)||0;
-    const nuevo=Math.round(sueldoActual*(1+pct/100));
-    prev.textContent=pct>0?`Nuevo sueldo: ${fmt(nuevo)}`:'';
+    const nuevo=Math.round(sueldoBase*(1+pct/100));
+    prev.textContent=`Nuevo sueldo: ${fmt(nuevo)}`;
     return nuevo;
   };
+  // Mostrar preview inicial si hay % guardado
+  if(pctGuardado)calcular();
   inp.addEventListener('input',calcular);
   setTimeout(()=>{inp.focus();},100);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('btn-pct-save').click();}if(e.key==='Escape')closeModal();});
   document.getElementById('btn-pct-save').onclick=()=>{
     const pct=Number(inp.value)||0;
     const nuevo=calcular();
-    if(pct>0){closeModal();saveAumento(anio,mesIdx,pct);onSave(nuevo);}
-    else closeModal();
+    closeModal();
+    saveAumento(anio,mesIdx,pct);
+    onSave(nuevo);
   };
 }
 
@@ -600,7 +613,8 @@ function render(){
   const ph=E('div','ph');ph.textContent=`período: ${MESES[mesIdx].toUpperCase()} ${anio}`;bl.appendChild(ph);
 
   const pctActual=getAumento(anio,mesIdx);
-  const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctActual>0?`${pctActual}%`:'%';d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
+  const pctStr=AUMENTOS.hasOwnProperty(`${anio}_${mesIdx}`)?`${pctActual}%`:'%';
+  const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctStr;d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
   bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Sueldo',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
   mes.extras.forEach((e,i)=>{
