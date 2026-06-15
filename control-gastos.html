@@ -790,6 +790,25 @@ function render(){
         tbl.appendChild(filaG);
       });
 
+      // Subtotales cuotas vs corrientes
+      const totCuotas=(t.gastos||[]).filter(g=>Number(g.cuotaTotal)>1).reduce((s,g)=>s+(Number(g.importe)||0),0);
+      const totCorrientes=(t.gastos||[]).filter(g=>Number(g.cuotaTotal)<=1).reduce((s,g)=>s+(Number(g.importe)||0),0);
+      if(totCuotas>0&&totCorrientes>0){
+        tbl.appendChild(mkRow([
+          {w:24,bg:'#FFF5EE',node:E('div')},
+          {w:24,bg:'#FFF5EE',node:E('div')},
+          {w:160,bg:'#FFF5EE',node:(()=>{const d=E('div','lbl');d.style.cssText='color:#833C00;font-style:italic;font-size:12px;';d.textContent='En cuotas:';return d;})()},
+          {w:90,bg:'#FFF5EE',node:(()=>{const d=E('div','val');d.style.cssText='color:#833C00;font-size:12px;';d.textContent=fmt(totCuotas);return d;})()},
+          {grow:true,bg:'#FFF5EE',node:E('div')},
+        ],'1px solid #F0D0C0'));
+        tbl.appendChild(mkRow([
+          {w:24,bg:'#FFF5EE',node:E('div')},
+          {w:24,bg:'#FFF5EE',node:E('div')},
+          {w:160,bg:'#FFF5EE',node:(()=>{const d=E('div','lbl');d.style.cssText='color:#833C00;font-style:italic;font-size:12px;';d.textContent='Corrientes:';return d;})()},
+          {w:90,bg:'#FFF5EE',node:(()=>{const d=E('div','val');d.style.cssText='color:#833C00;font-size:12px;';d.textContent=fmt(totCorrientes);return d;})()},
+          {grow:true,bg:'#FFF5EE',node:E('div')},
+        ],'1px solid #F0D0C0'));
+      }
       const rowG=E('div');rowG.style.cssText='display:flex;border-bottom:1px solid #DDD;';
       const paddG=E('div');paddG.style.cssText='width:48px;flex-shrink:0;';
       const btnAG=E('div','btn-add');btnAG.style.cssText='color:#A0522D;background:#FFF5EE;flex:1;';btnAG.textContent='+ Agregar gasto';btnAG.onclick=()=>addG(ti);
