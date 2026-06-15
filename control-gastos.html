@@ -76,7 +76,7 @@ const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
   {id:"tMAC",nombre:"VISA MACRO",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
 ]});
 
-const ST={};let vistaAnual=false;
+const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear();
 let FIJOS={};
 try{const f=localStorage.getItem('fijos_globales');if(f)FIJOS=JSON.parse(f);}catch(e){}
 function saveFijos(){try{localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
@@ -143,7 +143,7 @@ function updateDriveBar(){
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;render();};
-  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;renderAnual();};
+  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;anioAnual=anio;renderAnual();};
   gb.append(ub,dl,vG,vA);
 }
 
@@ -586,7 +586,12 @@ function renderAnual(){
 
   const cnt=E('div','content');app.appendChild(cnt);
   const bl=E('div','block');cnt.appendChild(bl);
-  const ph=E('div','ph');ph.textContent=`RESUMEN ANUAL ${anio}`;bl.appendChild(ph);
+  const ph=E('div','ph');
+  ph.style.cssText='background:#1F3864;padding:5px 10px;color:white;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between;';
+  const btnAA=E('button');btnAA.style.cssText='background:#0f2044;color:white;border:none;width:28px;height:28px;font-size:16px;cursor:pointer;';btnAA.textContent='◀';btnAA.onclick=()=>{anioAnual--;renderAnual();};
+  const lblAA=E('span');lblAA.textContent=`RESUMEN ANUAL ${anioAnual}`;
+  const btnAD=E('button');btnAD.style.cssText='background:#0f2044;color:white;border:none;width:28px;height:28px;font-size:16px;cursor:pointer;';btnAD.textContent='▶';btnAD.onclick=()=>{anioAnual++;renderAnual();};
+  ph.append(btnAA,lblAA,btnAD);bl.appendChild(ph);
   bl.appendChild(mkRow([
     {w:110,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='MES';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='INGRESOS';return d;})()},
@@ -595,7 +600,7 @@ function renderAnual(){
   ],'2px solid #9E9E9E'));
   let tI=0,tG2=0;
   MESES.forEach((mes,m)=>{
-    if(!gST(anio,m))lLoad(anio,m);const d=gST(anio,m);const rbg=m%2===0?'white':'#F5F5F5';
+    if(!gST(anioAnual,m))lLoad(anioAnual,m);const d=gST(anioAnual,m);const rbg=m%2===0?'white':'#F5F5F5';
     if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
     const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
     const tT2=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
