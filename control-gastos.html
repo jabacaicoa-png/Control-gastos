@@ -142,7 +142,9 @@ function updateDriveBar(){
   }
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
-  gb.append(ub,dl);
+  const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;render();};
+  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;renderAnual();};
+  gb.append(ub,dl,vG,vA);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
@@ -581,10 +583,7 @@ function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
   const rib=E('div','ribbon');const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';const rs=E('div');rs.style.flex='1';rib.append(rt,rs);app.appendChild(rib);
   const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
-  const tb=E('div','tab-bar');
-  const tM=E('div','tab');tM.textContent=`gastos ${anio}`;tM.style.color='#999';tM.onclick=()=>{vistaAnual=false;render();};
-  const tA=E('div','tab');tA.textContent=`resumen ${anio}`;tA.style.cssText='background:#1F3864;color:white;border:1px solid #1F3864;border-bottom:none;padding:3px 14px;font-size:13px;font-weight:700;';
-  tb.append(tM,tA);app.appendChild(tb);
+
   const cnt=E('div','content');app.appendChild(cnt);
   const bl=E('div','block');cnt.appendChild(bl);
   const ph=E('div','ph');ph.textContent=`RESUMEN ANUAL ${anio}`;bl.appendChild(ph);
@@ -638,10 +637,7 @@ function render(){
 
   const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
 
-  const tb=E('div','tab-bar');
-  const tM=E('div','tab');tM.textContent=`gastos ${anio}`;
-  const tA=E('div','tab');tA.textContent=`resumen ${anio}`;tA.style.color='#999';tA.onclick=()=>{vistaAnual=true;renderAnual();};
-  tb.append(tM,tA);app.appendChild(tb);
+
 
   const cnt=E('div','content');app.appendChild(cnt);
   const bl=E('div','block');
