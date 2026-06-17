@@ -76,7 +76,10 @@ const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
   {id:"tMAC",nombre:"VISA MACRO",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
 ]});
 
-const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear();
+const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear(),vistaAhorros=false;
+let AHORROS=[];
+try{const a=localStorage.getItem('ahorros_data');if(a)AHORROS=JSON.parse(a);}catch(e){}
+function saveAhorros(){try{localStorage.setItem('ahorros_data',JSON.stringify(AHORROS));}catch(e){}}
 let FIJOS={};
 try{const f=localStorage.getItem('fijos_globales');if(f)FIJOS=JSON.parse(f);}catch(e){}
 function saveFijos(){try{localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
@@ -142,16 +145,17 @@ function updateDriveBar(){
   }
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
-  const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;render();};
-  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;anioAnual=anio;renderAnual();};
-  gb.append(ub,dl,vG,vA);
+  const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;render();};
+  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;anioAnual=anio;renderAnual();};
+  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vAh.textContent='AHORROS';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;renderAhorros();};
+  gb.append(ub,dl,vG,vA,vAh);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
 
 async function dSaveAll(){
   if(!driveReady||!accessToken)return;
-  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS};
+  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS};
   const body=JSON.stringify(backup);
   try{
     if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
@@ -177,6 +181,7 @@ async function dLoad(){
       if(dd.__verif){try{Object.assign(VERIF,dd.__verif);localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
       if(dd.__debitos){try{Object.assign(DEBITOS,dd.__debitos);localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
       if(dd.__aumentos){try{Object.assign(AUMENTOS,dd.__aumentos);localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
+      if(dd.__ahorros){try{AHORROS.length=0;dd.__ahorros.forEach(a=>AHORROS.push(a));localStorage.setItem('ahorros_data',JSON.stringify(AHORROS));}catch(e){}}
       // Merge datos de meses
       const skipKeys=new Set(['__fijos','__verif','__debitos']);
       const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
@@ -579,6 +584,51 @@ function traerFijosTarjeta(tarjetaId){
   });
 }
 
+function renderAhorros(){
+  const app=document.getElementById('app');app.innerHTML='';
+  const rib=E('div','ribbon');
+  const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
+  const rs=E('div');rs.style.flex='1';
+  const nb=E('button','nav-btn');nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
+  const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;nm.style.cursor='pointer';nm.onclick=()=>navegarPeriodoModal();
+  const nf=E('button','nav-btn');nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
+  rib.append(rt,rs,nb,nm,nf);app.appendChild(rib);
+  const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
+  const cnt=E('div','content');app.appendChild(cnt);
+  const bl=E('div','block');cnt.appendChild(bl);
+  const ph=E('div','ph');ph.textContent='AHORROS';bl.appendChild(ph);
+
+  // Header
+  bl.appendChild(mkRow([
+    {w:200,bg:'#D9E1F2',node:thN('Descripción')},
+    {w:120,bg:'#D9E1F2',node:thN('Monto')},
+    {w:26,bg:'#D9E1F2',node:E('div')},
+  ],'2px solid #9E9E9E'));
+
+  // Filas de ahorros
+  AHORROS.forEach((a,i)=>{
+    const rbg=i%2===0?'white':'#F5F8FF';
+    tbl_ah=bl;
+    bl.appendChild(mkRow([
+      {w:200,bg:rbg,node:mkCell(a.desc,v=>{AHORROS[i].desc=v;saveAhorros();render();},{placeholder:'DESCRIPCIÓN',celda:`ah${i}d`})},
+      {w:120,bg:rbg,node:mkCell(a.monto,v=>{AHORROS[i].monto=Number(v)||0;saveAhorros();render();},{type:'number',celda:`ah${i}m`})},
+      {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${a.desc||'este ahorro'}"?`,()=>{AHORROS.splice(i,1);saveAhorros();renderAhorros();}))},
+    ]));
+  });
+
+  // Total
+  const totAh=AHORROS.reduce((s,a)=>s+(Number(a.monto)||0),0);
+  if(AHORROS.length>0){
+    bl.appendChild(mkRow([
+      {w:200,bg:'#C6EFCE',node:lbl('TOTAL',{bold:true,color:'#375623'})},
+      {w:120,bg:'#C6EFCE',node:valD(fmt(totAh),{bold:true,color:'#375623'})},
+      {w:26,bg:'#C6EFCE',node:E('div')},
+    ],'2px solid #9E9E9E'));
+  }
+
+  bl.appendChild(addB('+ Agregar ahorro','#1F3864','#EEF2FF',()=>{AHORROS.push({id:uid(),desc:'',monto:0});saveAhorros();renderAhorros();}));
+}
+
 function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
   const rib=E('div','ribbon');const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';const rs=E('div');rs.style.flex='1';rib.append(rt,rs);app.appendChild(rib);
@@ -624,6 +674,7 @@ function renderAnual(){
 
 function render(){
   if(vistaAnual){renderAnual();return;}
+  if(vistaAhorros){renderAhorros();return;}
   const mes=gM();
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
   const tT=mes.tarjetas.reduce((s,t)=>s+(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0),0);
