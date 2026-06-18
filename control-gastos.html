@@ -147,7 +147,7 @@ function updateDriveBar(){
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;render();};
   const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;anioAnual=anio;renderAnual();};
-  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vAh.textContent='AHORROS';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;renderAhorros();};
+  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#006994':'#9E9E9E'};font-size:11px;`;vAh.textContent='CALC';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;renderAhorros();};
   gb.append(ub,dl,vG,vA,vAh);
 }
 
@@ -589,44 +589,128 @@ function renderAhorros(){
   const rib=E('div','ribbon');
   const rt=E('span','ribbon-title');rt.textContent='📊 CONTROL DE GASTOS';
   const rs=E('div');rs.style.flex='1';
-  const nb=E('button','nav-btn');nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
-  const nm=E('div','nav-mes');nm.textContent=MESES[mesIdx].toUpperCase()+' '+anio;nm.style.cursor='pointer';nm.onclick=()=>navegarPeriodoModal();
-  const nf=E('button','nav-btn');nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
-  rib.append(rt,rs,nb,nm,nf);app.appendChild(rib);
+  rib.append(rt,rs);app.appendChild(rib);
   const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
   const cnt=E('div','content');app.appendChild(cnt);
   const bl=E('div','block');cnt.appendChild(bl);
-  const ph=E('div','ph');ph.textContent='AHORROS';bl.appendChild(ph);
+  const ph=E('div','ph');ph.textContent='🧮 CALCULADORA';bl.appendChild(ph);
 
-  // Header
-  bl.appendChild(mkRow([
-    {w:200,bg:'#D9E1F2',node:thN('Descripción')},
-    {w:120,bg:'#D9E1F2',node:thN('Monto')},
-    {w:26,bg:'#D9E1F2',node:E('div')},
-  ],'2px solid #9E9E9E'));
+  // Tabs internos
+  const tabBar=E('div');tabBar.style.cssText='display:flex;border-bottom:2px solid #D0D0D0;';
+  const tabD=E('div');tabD.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#006994;border-bottom:3px solid #006994;';tabD.textContent='⚡ DIARIO';
+  const tabU=E('div');tabU.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#888;border-bottom:3px solid transparent;';tabU.textContent='🏠 UVA';
+  tabBar.append(tabD,tabU);bl.appendChild(tabBar);
 
-  // Filas de ahorros
-  AHORROS.forEach((a,i)=>{
-    const rbg=i%2===0?'white':'#F5F8FF';
-    tbl_ah=bl;
-    bl.appendChild(mkRow([
-      {w:200,bg:rbg,node:mkCell(a.desc,v=>{AHORROS[i].desc=v;saveAhorros();render();},{placeholder:'DESCRIPCIÓN',celda:`ah${i}d`})},
-      {w:120,bg:rbg,node:mkCell(a.monto,v=>{AHORROS[i].monto=Number(v)||0;saveAhorros();render();},{type:'number',celda:`ah${i}m`})},
-      {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${a.desc||'este ahorro'}"?`,()=>{AHORROS.splice(i,1);saveAhorros();renderAhorros();}))},
-    ]));
-  });
+  const panelD=E('div');panelD.style.padding='12px';
+  const panelU=E('div');panelU.style.cssText='padding:12px;display:none;';
+  bl.appendChild(panelD);bl.appendChild(panelU);
 
-  // Total
-  const totAh=AHORROS.reduce((s,a)=>s+(Number(a.monto)||0),0);
-  if(AHORROS.length>0){
-    bl.appendChild(mkRow([
-      {w:200,bg:'#C6EFCE',node:lbl('TOTAL',{bold:true,color:'#375623'})},
-      {w:120,bg:'#C6EFCE',node:valD(fmt(totAh),{bold:true,color:'#375623'})},
-      {w:26,bg:'#C6EFCE',node:E('div')},
-    ],'2px solid #9E9E9E'));
-  }
+  tabD.onclick=()=>{panelD.style.display='block';panelU.style.display='none';tabD.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#006994;border-bottom:3px solid #006994;';tabU.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#888;border-bottom:3px solid transparent;';};
+  tabU.onclick=()=>{panelD.style.display='none';panelU.style.display='block';tabU.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#833C00;border-bottom:3px solid #833C00;';tabD.style.cssText='flex:1;padding:8px;text-align:center;cursor:pointer;font-size:12px;color:#888;border-bottom:3px solid transparent;';};
 
-  bl.appendChild(addB('+ Agregar ahorro','#1F3864','#EEF2FF',()=>{AHORROS.push({id:uid(),desc:'',monto:0});saveAhorros();renderAhorros();}));
+  // ── PANEL DIARIO ──
+  const gD=E('div');gD.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
+  const fDc=E('div');fDc.innerHTML='<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Capital ($)</label>';
+  const inDc=document.createElement('input');inDc.type='number';inDc.value='1000000';inDc.id='d-capital';Object.assign(inDc.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});
+  fDc.appendChild(inDc);
+  const fDt=E('div');fDt.innerHTML='<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">TNA (%)</label>';
+  const inDt=document.createElement('input');inDt.type='number';inDt.value='0';inDt.step='0.1';inDt.id='d-tna';Object.assign(inDt.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});
+  fDt.appendChild(inDt);
+  gD.append(fDc,fDt);panelD.appendChild(gD);
+  const btnD=document.createElement('button');btnD.textContent='CALCULAR';btnD.style.cssText='width:100%;background:#006994;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
+  const resD=E('div');resD.style.display='none';resD.id='d-res';
+  btnD.onclick=()=>{
+    const cap=parseFloat(document.getElementById('d-capital').value)||0;
+    const tna=parseFloat(document.getElementById('d-tna').value)||0;
+    if(!cap||!tna){resD.style.display='none';return;}
+    const td=Math.pow(1+tna/100,1/365)-1;
+    const c7=cap*Math.pow(1+td,7),c30=cap*Math.pow(1+td,30),c365=cap*Math.pow(1+td,365);
+    const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const fmt0=n=>'$ '+Math.round(n).toLocaleString('es-AR');
+    resD.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+        <div style="background:#F0FFF4;border:2px solid #217346;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">Mañana</div>
+          <div style="font-size:16px;color:#217346;font-weight:700;">${fmt0(cap*td)}</div>
+          <div style="font-size:10px;color:#999;">tasa diaria: ${fmtN2(td*100,4)}%</div>
+        </div>
+        <div style="background:#F0FFF4;border:2px solid #217346;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">7 días</div>
+          <div style="font-size:16px;color:#217346;font-weight:700;">${fmt0(c7-cap)}</div>
+          <div style="font-size:10px;color:#999;">total: ${fmt0(c7)}</div>
+        </div>
+        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">30 días</div>
+          <div style="font-size:16px;color:#1F3864;font-weight:700;">${fmt0(c30-cap)}</div>
+          <div style="font-size:10px;color:#999;">total: ${fmt0(c30)}</div>
+        </div>
+        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">1 año</div>
+          <div style="font-size:16px;color:#1F3864;font-weight:700;">${fmt0(c365-cap)}</div>
+          <div style="font-size:10px;color:#999;">TEA: ${fmtN2((c365/cap-1)*100)}%</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#555;padding:6px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Día a día — primeros 30 días</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:#1F3864;color:white;"><th style="padding:5px 6px;text-align:left;">Día</th><th style="padding:5px 6px;">Ganancia</th><th style="padding:5px 6px;">Acumulado</th><th style="padding:5px 6px;">Total</th></tr></thead>
+        <tbody>${(()=>{let t='',c2=cap;for(let d=1;d<=30;d++){const a=c2;c2=c2*(1+td);const bg=d%2===0?'background:#F9F9F9':'';t+=`<tr style="${bg}"><td style="padding:4px 6px;">Día ${d}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">+${fmt0(c2-a)}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">+${fmt0(c2-cap)}</td><td style="padding:4px 6px;">${fmt0(c2)}</td></tr>`;}return t;})()}</tbody>
+      </table>`;
+    resD.style.display='block';
+  };
+  panelD.append(btnD,resD);
+
+  // ── PANEL UVA ──
+  const gU=E('div');gU.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
+  const mkField=(lbl,id,val,step)=>{const f=E('div');f.innerHTML=`<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">${lbl}</label>`;const inp=document.createElement('input');inp.type='number';inp.value=val;inp.step=step||'1';inp.id=id;Object.assign(inp.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'14px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});f.appendChild(inp);return f;};
+  gU.append(mkField('Monto ($)','u-monto','16724500','1'),mkField('TNA (%)','u-tna','19.9','0.1'),mkField('Valor UVA ($)','u-uva','1990.78','0.01'),mkField('IPC mensual (%)','u-ipc','2.7','0.1'));
+  panelU.appendChild(gU);
+  const btnU=document.createElement('button');btnU.textContent='CALCULAR';btnU.style.cssText='width:100%;background:#833C00;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
+  const resU=E('div');resU.style.display='none';
+  btnU.onclick=()=>{
+    const monto=parseFloat(document.getElementById('u-monto').value);
+    const tna=parseFloat(document.getElementById('u-tna').value)/100;
+    const uvaVal=parseFloat(document.getElementById('u-uva').value);
+    const ipc=parseFloat(document.getElementById('u-ipc').value)/100;
+    if(!monto||!tna||!uvaVal)return;
+    const capUVA=monto/uvaVal,tm=tna/12,tea=(Math.pow(1+tm,12)-1)*100;
+    const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    let cards='';
+    [12,24,36,48,60].forEach(n=>{
+      const cUVA=capUVA*tm*Math.pow(1+tm,n)/(Math.pow(1+tm,n)-1);
+      const cIni=cUVA*uvaVal,cFin=cUVA*uvaVal*Math.pow(1+ipc,n);
+      cards+=`<div onclick="proyUVA(${n},${cUVA},${uvaVal},${ipc})" style="background:#FFF5EE;border:2px solid #F4B183;padding:8px;text-align:center;cursor:pointer;">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;">${n} cuotas</div>
+        <div style="font-size:14px;color:#833C00;font-weight:700;margin:4px 0;">${fmt2(cIni)}</div>
+        <div style="font-size:9px;color:#999;">inicial · fin est. ${fmt2(cFin)}</div>
+      </div>`;
+    });
+    resU.innerHTML=`
+      <div style="margin:6px 0;">${[`Monto: ${fmt2(monto)}`,`${fmtN2(capUVA)} UVAs`,`TNA: ${fmtN2(tna*100)}%`,`TEA: ${fmtN2(tea)}%`,`UVA: ${fmt2(uvaVal)}`].map(t=>`<span style="display:inline-block;background:#FFF5EE;border:1px solid #F4B183;padding:3px 6px;margin:2px;font-size:11px;color:#833C00;">${t}</span>`).join('')}</div>
+      <div style="font-size:11px;color:#555;padding:6px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Elegí un plazo</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0;" id="u-cards-wrap">${cards}</div>
+      <div id="u-proj-label" style="display:none;font-size:11px;color:#833C00;padding:6px 0;font-weight:700;"></div>
+      <div id="u-proj-wrap" style="display:none;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead><tr style="background:#833C00;color:white;"><th style="padding:5px 6px;text-align:left;">Cuota</th><th style="padding:5px 6px;">Valor UVA</th><th style="padding:5px 6px;">Cuota $</th><th style="padding:5px 6px;">Var.</th></tr></thead>
+          <tbody id="u-proj-body"></tbody>
+        </table>
+      </div>`;
+    resU.style.display='block';
+  };
+  panelU.append(btnU,resU);
+
+  // Función proyección UVA global
+  window.proyUVA=(n,cUVA,uvaVal,ipc)=>{
+    const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    let tbody='',vUVA=uvaVal;
+    for(let m=1;m<=n;m++){if(m>1)vUVA=vUVA*(1+ipc);const cp=cUVA*vUVA;const bg=m%2===0?'background:#F9F9F9':'';tbody+=`<tr style="${bg}"><td style="padding:4px 6px;">Cuota ${m}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(vUVA)}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(cp)}</td><td style="padding:4px 6px;color:#888;font-size:10px;">${m===1?'—':'+'+fmtN2(ipc*100,1)+'%'}</td></tr>`;}
+    document.getElementById('u-proj-body').innerHTML=tbody;
+    document.getElementById('u-proj-label').textContent=`Proyección ${n} cuotas — IPC ${fmtN2(ipc*100,1)}% mensual`;
+    document.getElementById('u-proj-label').style.display='block';
+    document.getElementById('u-proj-wrap').style.display='block';
+  };
 }
 
 function renderAnual(){
