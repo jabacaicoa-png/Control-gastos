@@ -155,7 +155,9 @@ function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeou
 
 async function dSaveAll(){
   if(!driveReady||!accessToken)return;
-  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS};
+  const calcD=JSON.parse(localStorage.getItem('calc_diario')||'{}');
+  const calcU=JSON.parse(localStorage.getItem('calc_uva')||'{}');
+  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS, __calcD:calcD, __calcU:calcU};
   const body=JSON.stringify(backup);
   try{
     if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
@@ -182,6 +184,8 @@ async function dLoad(){
       if(dd.__debitos){try{Object.assign(DEBITOS,dd.__debitos);localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
       if(dd.__aumentos){try{Object.assign(AUMENTOS,dd.__aumentos);localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
       if(dd.__ahorros){try{AHORROS.length=0;dd.__ahorros.forEach(a=>AHORROS.push(a));localStorage.setItem('ahorros_data',JSON.stringify(AHORROS));}catch(e){}}
+      if(dd.__calcD){try{localStorage.setItem('calc_diario',JSON.stringify(dd.__calcD));}catch(e){}}
+      if(dd.__calcU){try{localStorage.setItem('calc_uva',JSON.stringify(dd.__calcU));}catch(e){}}
       // Merge datos de meses
       const skipKeys=new Set(['__fijos','__verif','__debitos']);
       const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
@@ -617,11 +621,14 @@ function renderAhorros(){
   const inDt=document.createElement('input');inDt.type='number';inDt.value='0';inDt.step='0.1';inDt.id='d-tna';Object.assign(inDt.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});
   fDt.appendChild(inDt);
   gD.append(fDc,fDt);panelD.appendChild(gD);
+  // Restaurar valores guardados
+  try{const sd=localStorage.getItem('calc_diario');if(sd){const p=JSON.parse(sd);inDc.value=p.cap||1000000;inDt.value=p.tna||0;}}catch(e){}
   const btnD=document.createElement('button');btnD.textContent='CALCULAR';btnD.style.cssText='width:100%;background:#006994;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resD=E('div');resD.style.display='none';resD.id='d-res';
   btnD.onclick=()=>{
     const cap=parseFloat(document.getElementById('d-capital').value)||0;
     const tna=parseFloat(document.getElementById('d-tna').value)||0;
+    try{localStorage.setItem('calc_diario',JSON.stringify({cap,tna}));}catch(e){}
     if(!cap||!tna){resD.style.display='none';return;}
     const td=Math.pow(1+tna/100,1/365)-1;
     const c7=cap*Math.pow(1+td,7),c30=cap*Math.pow(1+td,30),c365=cap*Math.pow(1+td,365);
@@ -664,6 +671,13 @@ function renderAhorros(){
   const mkField=(lbl,id,val,step)=>{const f=E('div');f.innerHTML=`<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">${lbl}</label>`;const inp=document.createElement('input');inp.type='number';inp.value=val;inp.step=step||'1';inp.id=id;Object.assign(inp.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'14px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});f.appendChild(inp);return f;};
   gU.append(mkField('Monto ($)','u-monto','16724500','1'),mkField('TNA (%)','u-tna','19.9','0.1'),mkField('Valor UVA ($)','u-uva','1990.78','0.01'),mkField('IPC mensual (%)','u-ipc','2.7','0.1'));
   panelU.appendChild(gU);
+  // Restaurar valores guardados UVA
+  try{const su=localStorage.getItem('calc_uva');if(su){const p=JSON.parse(su);
+    document.getElementById('u-monto').value=p.monto||16724500;
+    document.getElementById('u-tna').value=p.tna||19.9;
+    document.getElementById('u-uva').value=p.uva||1990.78;
+    document.getElementById('u-ipc').value=p.ipc||2.7;
+  }}catch(e){}
   const btnU=document.createElement('button');btnU.textContent='CALCULAR';btnU.style.cssText='width:100%;background:#833C00;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resU=E('div');resU.style.display='none';
   btnU.onclick=()=>{
@@ -671,6 +685,7 @@ function renderAhorros(){
     const tna=parseFloat(document.getElementById('u-tna').value)/100;
     const uvaVal=parseFloat(document.getElementById('u-uva').value);
     const ipc=parseFloat(document.getElementById('u-ipc').value)/100;
+    try{localStorage.setItem('calc_uva',JSON.stringify({monto,tna:tna*100,uva:uvaVal,ipc:ipc*100}));}catch(e){}
     if(!monto||!tna||!uvaVal)return;
     const capUVA=monto/uvaVal,tm=tna/12,tea=(Math.pow(1+tm,12)-1)*100;
     const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
