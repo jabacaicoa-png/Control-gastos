@@ -623,6 +623,8 @@ function renderAhorros(){
   gD.append(fDc,fDt);panelD.appendChild(gD);
   // Restaurar valores guardados
   try{const sd=localStorage.getItem('calc_diario');if(sd){const p=JSON.parse(sd);inDc.value=p.cap||1000000;inDt.value=p.tna||0;}}catch(e){}
+  // Auto-calcular al restaurar
+  setTimeout(()=>{if(parseFloat(inDc.value)&&parseFloat(inDt.value))btnD.click();},50);
   const btnD=document.createElement('button');btnD.textContent='CALCULAR';btnD.style.cssText='width:100%;background:#006994;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resD=E('div');resD.style.display='none';resD.id='d-res';
   btnD.onclick=()=>{
@@ -678,6 +680,8 @@ function renderAhorros(){
     document.getElementById('u-uva').value=p.uva||1990.78;
     document.getElementById('u-ipc').value=p.ipc||2.7;
   }}catch(e){}
+  // Auto-calcular al restaurar
+  setTimeout(()=>{const m=parseFloat(document.getElementById('u-monto').value);const t=parseFloat(document.getElementById('u-tna').value);const u=parseFloat(document.getElementById('u-uva').value);if(m&&t&&u)btnU.click();},100);
   const btnU=document.createElement('button');btnU.textContent='CALCULAR';btnU.style.cssText='width:100%;background:#833C00;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resU=E('div');resU.style.display='none';
   btnU.onclick=()=>{
