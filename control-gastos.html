@@ -19,7 +19,10 @@ input[type=number]{text-transform:none;}
 .nav-btn{background:#1a5c38;border:1px solid #145029;color:white;font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .nav-mes{background:white;color:#217346;font-weight:700;font-size:13px;padding:2px 8px;min-width:110px;text-align:center;}
 .gdrive-bar{background:#F2F2F2;border-bottom:1px solid #CCC;padding:5px 10px;display:flex;align-items:center;gap:6px;font-size:13px;flex-wrap:nowrap;overflow-x:auto;}
-.gbtn{color:white;border:none;padding:0;font-size:13px;font-family:'Courier New',monospace;cursor:pointer;border-radius:4px;white-space:nowrap;width:60px;height:36px;display:inline-flex;align-items:center;justify-content:center;}
+.gbtn{color:white;border:none;padding:0;font-size:13px;font-family:'Courier New',monospace;cursor:pointer;border-radius:6px;white-space:nowrap;width:60px;height:36px;display:inline-flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 3px 0 rgba(0,0,0,.4),0 4px 6px rgba(0,0,0,.28),inset 0 -2px 3px rgba(0,0,0,.18);transition:transform .08s ease,box-shadow .08s ease;-webkit-tap-highlight-color:transparent;transform:translateY(0);}
+.gbtn::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,.45) 0%,rgba(255,255,255,.08) 40%,rgba(0,0,0,0) 60%,rgba(0,0,0,.15) 100%);}
+.gbtn:active{transform:translateY(3px);box-shadow:0 0 0 rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.25),inset 0 2px 3px rgba(0,0,0,.25);}
+.gbtn:disabled,.gbtn[disabled]{opacity:.6;box-shadow:0 1px 0 rgba(0,0,0,.25),inset 0 -1px 2px rgba(0,0,0,.15);}
 .gbtn.blue{background:#4285F4;}.gbtn.green{background:#217346;}.gbtn.navy{background:#1F3864;}
 .tab-bar{background:#BFBFBF;display:flex;align-items:flex-end;padding-left:10px;border-bottom:2px solid #9E9E9E;}
 .tab{background:white;border:1px solid #9E9E9E;border-bottom:none;padding:3px 14px;font-size:13px;font-weight:700;color:#217346;cursor:pointer;}
