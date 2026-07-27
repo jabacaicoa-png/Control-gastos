@@ -763,8 +763,7 @@ function renderPlani(){
   PLANI.cols.forEach((col,ci)=>{
     const th=document.createElement('th');th.style.cssText='background:#5C3D2E;border:1px solid #8B5E3C;padding:0;min-width:120px;';
     const inp=document.createElement('input');inp.value=col;inp.placeholder=String.fromCharCode(65+ci);
-    Object.assign(inp.style,{width:'100%',background:'transparent',border:'none',outline:'none',color:'white',fontWeight:'700',fontFamily:"'Courier New',monospace",fontSize:'13px',padding:'5px 6px',textAlign:'center',textTransform:'uppercase'});
-    inp.oninput=()=>{const p=inp.selectionStart;inp.value=inp.value.toUpperCase();inp.setSelectionRange(p,p);};
+    Object.assign(inp.style,{width:'100%',background:'transparent',border:'none',outline:'none',color:'white',fontWeight:'700',fontFamily:"'Courier New',monospace",fontSize:'13px',padding:'5px 6px',textAlign:'center',textTransform:'none'});
     inp.onblur=()=>{PLANI.cols[ci]=inp.value;savePlani();};
     th.appendChild(inp);
     // Botón eliminar columna
@@ -787,7 +786,7 @@ function renderPlani(){
     PLANI.cols.forEach((col,ci)=>{
       const td=document.createElement('td');td.style.cssText='border:1px solid #D4B896;padding:0;';
       const inp=document.createElement('input');inp.value=row[ci]||'';
-      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Courier New',monospace",fontSize:'13px',fontWeight:'700',padding:'5px 6px',minWidth:'120px'});
+      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Courier New',monospace",fontSize:'13px',fontWeight:'700',padding:'5px 6px',minWidth:'120px',textTransform:'none'});
       inp.onfocus=()=>{inp.style.background='#FFF9C4';};
       inp.onblur=()=>{PLANI.rows[ri][ci]=inp.value;savePlani();inp.style.background='transparent';dDebounce();};
       inp.onkeydown=(e)=>{
