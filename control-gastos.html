@@ -6,11 +6,14 @@
 <meta name="theme-color" content="#217346"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Control de Gastos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Roboto',sans-serif;font-size:13px;font-weight:700;}
 body{background:#EBEBEB;min-height:100vh;}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-input{font-family:'Courier New',monospace!important;font-size:13px!important;font-weight:700!important;text-transform:uppercase;}
+input{font-family:'Roboto',sans-serif!important;font-size:13px!important;font-weight:700!important;text-transform:uppercase;}
 input[type=number]{text-transform:none;}
 ::-webkit-scrollbar{height:4px;width:4px;}
 ::-webkit-scrollbar-thumb{background:#AAA;border-radius:3px;}
@@ -19,7 +22,7 @@ input[type=number]{text-transform:none;}
 .nav-btn{background:#1a5c38;border:1px solid #145029;color:white;font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .nav-mes{background:white;color:#217346;font-weight:700;font-size:13px;padding:2px 8px;min-width:110px;text-align:center;}
 .gdrive-bar{background:#F2F2F2;border-bottom:1px solid #CCC;padding:5px 10px;display:flex;align-items:center;gap:6px;font-size:13px;flex-wrap:nowrap;overflow-x:auto;}
-.gbtn{color:white;border:none;padding:0;font-size:13px;font-family:'Courier New',monospace;cursor:pointer;border-radius:6px;white-space:nowrap;width:60px;height:36px;display:inline-flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 3px 0 rgba(0,0,0,.4),0 4px 6px rgba(0,0,0,.28),inset 0 -2px 3px rgba(0,0,0,.18);transition:transform .08s ease,box-shadow .08s ease;-webkit-tap-highlight-color:transparent;transform:translateY(0);}
+.gbtn{color:white;border:none;padding:0;font-size:13px;font-family:'Roboto',sans-serif;cursor:pointer;border-radius:6px;white-space:nowrap;width:60px;height:36px;display:inline-flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 3px 0 rgba(0,0,0,.4),0 4px 6px rgba(0,0,0,.28),inset 0 -2px 3px rgba(0,0,0,.18);transition:transform .08s ease,box-shadow .08s ease;-webkit-tap-highlight-color:transparent;transform:translateY(0);}
 .gbtn::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,.45) 0%,rgba(255,255,255,.08) 40%,rgba(0,0,0,0) 60%,rgba(0,0,0,.15) 100%);}
 .gbtn:active{transform:translateY(3px);box-shadow:0 0 0 rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.25),inset 0 2px 3px rgba(0,0,0,.25);}
 .gbtn:disabled,.gbtn[disabled]{opacity:.6;box-shadow:0 1px 0 rgba(0,0,0,.25),inset 0 -1px 2px rgba(0,0,0,.15);}
@@ -51,7 +54,7 @@ input[type=number]{text-transform:none;}
 .modal-box{background:white;border:2px solid #1F3864;padding:18px;width:100%;max-width:340px;box-shadow:4px 4px 0 #9E9E9E;}
 .modal-title{font-weight:700;font-size:14px;color:#1F3864;margin-bottom:10px;border-bottom:2px solid #D9E1F2;padding-bottom:5px;}
 .modal-info{font-size:13px;color:#444;margin-bottom:10px;line-height:1.5;}
-.modal-select{width:100%;padding:8px;font-size:14px;font-family:'Courier New',monospace;border:1px solid #9E9E9E;background:white;margin-bottom:12px;}
+.modal-select{width:100%;padding:8px;font-size:14px;font-family:'Roboto',sans-serif;border:1px solid #9E9E9E;background:white;margin-bottom:12px;}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;}
 .btn1{background:#217346;color:white;border:none;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;}
 .btn2{background:#F2F2F2;color:#333;border:1px solid #9E9E9E;padding:8px 14px;font-size:14px;cursor:pointer;}
@@ -278,7 +281,7 @@ function navegarPeriodoModal(){
       for(let c=0;c<3;c++){
         const m=f*3+c;
         const ea=m===mesIdx&&anioNav===anio;
-        filas+=`<div onclick="irPeriodo(${m},${anioNav})" style="flex:1;padding:10px 0;text-align:center;cursor:pointer;font-weight:700;font-family:'Courier New',monospace;font-size:14px;border-radius:3px;background:${ea?'#217346':'#F5F5F5'};color:${ea?'white':'#333'};border:2px solid ${ea?'#217346':'#DDD'};margin:3px;">${MC[m]}</div>`;
+        filas+=`<div onclick="irPeriodo(${m},${anioNav})" style="flex:1;padding:10px 0;text-align:center;cursor:pointer;font-weight:700;font-family:'Roboto',sans-serif;font-size:14px;border-radius:3px;background:${ea?'#217346':'#F5F5F5'};color:${ea?'white':'#333'};border:2px solid ${ea?'#217346':'#DDD'};margin:3px;">${MC[m]}</div>`;
       }
       filas+='</div>';
     }
@@ -319,7 +322,7 @@ function aumentoModal(sueldoActual, onSave){
         <div class="modal-info">Base (mes anterior): <b>${fmt(sueldoBase)}</b></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <input id="pct-inp" type="number" min="0" max="999" step="0.1"
-            style="flex:1;padding:10px;font-size:20px;font-family:'Courier New',monospace;font-weight:700;border:2px solid #1F3864;outline:none;text-align:center;"
+            style="flex:1;padding:10px;font-size:20px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #1F3864;outline:none;text-align:center;"
             placeholder="0" value="${pctGuardado||''}"/>
           <span style="font-size:20px;font-weight:700;">%</span>
         </div>
@@ -359,7 +362,7 @@ function editModal(label, val, onSave, tipo='text'){
       <div class="modal-box">
         <div class="modal-title">Editar: ${label}</div>
         <input id="edit-modal-inp" type="${tipo==='number'?'number':'text'}" 
-          style="width:100%;padding:10px;font-size:16px;font-family:'Courier New',monospace;font-weight:700;border:2px solid #1F3864;outline:none;text-transform:${tipo==='number'?'none':'uppercase'};"
+          style="width:100%;padding:10px;font-size:16px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #1F3864;outline:none;text-transform:${tipo==='number'?'none':'uppercase'};"
           value="${String(val||'').replace(/"/g,'&quot;')}"/>
         <div class="modal-btns" style="margin-top:12px;">
           <button class="btn2" onclick="closeModal()">Cancelar</button>
@@ -623,10 +626,10 @@ function renderAhorros(){
   // ── PANEL DIARIO ──
   const gD=E('div');gD.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
   const fDc=E('div');fDc.innerHTML='<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Capital ($)</label>';
-  const inDc=document.createElement('input');inDc.type='number';inDc.value='1000000';inDc.id='d-capital';Object.assign(inDc.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});
+  const inDc=document.createElement('input');inDc.type='number';inDc.value='1000000';inDc.id='d-capital';Object.assign(inDc.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Roboto',sans-serif",fontWeight:'700',outline:'none'});
   fDc.appendChild(inDc);
   const fDt=E('div');fDt.innerHTML='<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">TNA (%)</label>';
-  const inDt=document.createElement('input');inDt.type='number';inDt.value='0';inDt.step='0.1';inDt.id='d-tna';Object.assign(inDt.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});
+  const inDt=document.createElement('input');inDt.type='number';inDt.value='0';inDt.step='0.1';inDt.id='d-tna';Object.assign(inDt.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'15px',fontFamily:"'Roboto',sans-serif",fontWeight:'700',outline:'none'});
   fDt.appendChild(inDt);
   gD.append(fDc,fDt);panelD.appendChild(gD);
   // Restaurar valores guardados
@@ -676,7 +679,7 @@ function renderAhorros(){
 
   // ── PANEL UVA ──
   const gU=E('div');gU.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
-  const mkField=(lbl,id,val,step)=>{const f=E('div');f.innerHTML=`<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">${lbl}</label>`;const inp=document.createElement('input');inp.type='number';inp.value=val;inp.step=step||'1';inp.id=id;Object.assign(inp.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'14px',fontFamily:"'Courier New',monospace",fontWeight:'700',outline:'none'});f.appendChild(inp);return f;};
+  const mkField=(lbl,id,val,step)=>{const f=E('div');f.innerHTML=`<label style="display:block;font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">${lbl}</label>`;const inp=document.createElement('input');inp.type='number';inp.value=val;inp.step=step||'1';inp.id=id;Object.assign(inp.style,{width:'100%',border:'2px solid #D0D0D0',padding:'8px',fontSize:'14px',fontFamily:"'Roboto',sans-serif",fontWeight:'700',outline:'none'});f.appendChild(inp);return f;};
   gU.append(mkField('Monto ($)','u-monto','16724500','1'),mkField('TNA (%)','u-tna','19.9','0.1'),mkField('Valor UVA ($)','u-uva','1990.78','0.01'),mkField('IPC mensual (%)','u-ipc','2.7','0.1'));
   panelU.appendChild(gU);
   // Restaurar valores guardados UVA
@@ -747,7 +750,7 @@ function renderPlani(){
   const bl=E('div','block');cnt.appendChild(bl);
   const ph=E('div','ph');ph.style.cssText='background:#5C3D2E;padding:5px 10px;color:white;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between;';
   const phTxt=E('span');phTxt.textContent='📋 NOTAS';
-  const btnAddCol=document.createElement('button');btnAddCol.textContent='+ Col';Object.assign(btnAddCol.style,{background:'#8B5E3C',color:'white',border:'none',padding:'3px 8px',fontSize:'11px',cursor:'pointer',fontFamily:"'Courier New',monospace",fontWeight:'700'});
+  const btnAddCol=document.createElement('button');btnAddCol.textContent='+ Col';Object.assign(btnAddCol.style,{background:'#8B5E3C',color:'white',border:'none',padding:'3px 8px',fontSize:'11px',cursor:'pointer',fontFamily:"'Roboto',sans-serif",fontWeight:'700'});
   btnAddCol.onclick=()=>{PLANI.cols.push('');PLANI.rows.forEach(r=>r.push(''));savePlani();renderPlani();};
   ph.append(phTxt,btnAddCol);bl.appendChild(ph);
 
@@ -763,7 +766,7 @@ function renderPlani(){
   PLANI.cols.forEach((col,ci)=>{
     const th=document.createElement('th');th.style.cssText='background:#5C3D2E;border:1px solid #8B5E3C;padding:0;min-width:120px;';
     const inp=document.createElement('input');inp.value=col;inp.placeholder=String.fromCharCode(65+ci);
-    Object.assign(inp.style,{width:'100%',background:'transparent',border:'none',outline:'none',color:'white',fontWeight:'700',fontFamily:"'Courier New',monospace",fontSize:'13px',padding:'5px 6px',textAlign:'center',textTransform:'none'});
+    Object.assign(inp.style,{width:'100%',background:'transparent',border:'none',outline:'none',color:'white',fontWeight:'700',fontFamily:"'Roboto',sans-serif",fontSize:'13px',padding:'5px 6px',textAlign:'center',textTransform:'none'});
     inp.onblur=()=>{PLANI.cols[ci]=inp.value;savePlani();};
     th.appendChild(inp);
     // Botón eliminar columna
@@ -786,7 +789,7 @@ function renderPlani(){
     PLANI.cols.forEach((col,ci)=>{
       const td=document.createElement('td');td.style.cssText='border:1px solid #D4B896;padding:0;';
       const inp=document.createElement('input');inp.value=row[ci]||'';
-      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Courier New',monospace",fontSize:'13px',fontWeight:'700',padding:'5px 6px',minWidth:'120px',textTransform:'none'});
+      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Roboto',sans-serif",fontSize:'13px',fontWeight:'700',padding:'5px 6px',minWidth:'120px',textTransform:'none'});
       inp.onfocus=()=>{inp.style.background='#FFF9C4';};
       inp.onblur=()=>{PLANI.rows[ri][ci]=inp.value;savePlani();inp.style.background='transparent';dDebounce();};
       inp.onkeydown=(e)=>{
