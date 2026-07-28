@@ -877,7 +877,8 @@ function render(){
 
   const app=document.getElementById('app');app.innerHTML='';
 
-  const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
+  const stick=E('div');stick.style.cssText='position:sticky;top:0;z-index:99;';app.appendChild(stick);
+  const gb=E('div','gdrive-bar');gb.id='drive-bar';gb.style.position='static';stick.appendChild(gb);updateDriveBar();
 
   const cnt=E('div','content');app.appendChild(cnt);
   const bl=E('div','block');
@@ -885,7 +886,7 @@ function render(){
   const nb=E('button');nb.style.cssText='background:#0f2044;color:white;border:none;width:30px;height:30px;font-size:16px;cursor:pointer;border-radius:3px;flex-shrink:0;';nb.textContent='◀';nb.onclick=()=>{mesIdx--;if(mesIdx<0){mesIdx=11;anio--;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
   const nm=E('span');nm.textContent=`período: ${MESES[mesIdx].toUpperCase()} ${anio}`;nm.style.cssText='cursor:pointer;font-size:15px;flex:1;text-align:center;';nm.title='Tocar para ir a un período';nm.onclick=()=>navegarPeriodoModal();
   const nf=E('button');nf.style.cssText='background:#0f2044;color:white;border:none;width:30px;height:30px;font-size:16px;cursor:pointer;border-radius:3px;flex-shrink:0;';nf.textContent='▶';nf.onclick=()=>{mesIdx++;if(mesIdx>11){mesIdx=0;anio++;}try{localStorage.setItem('lastPeriod',JSON.stringify({anio,mes:mesIdx}));}catch(e){}lLoad(anio,mesIdx);render();};
-  ph.append(nb,nm,nf);bl.appendChild(ph);
+  ph.append(nb,nm,nf);stick.appendChild(ph);
 
   const pctActual=getAumento(anio,mesIdx);
   const pctStr=AUMENTOS.hasOwnProperty(`${anio}_${mesIdx}`)?`${pctActual}%`:'%';
