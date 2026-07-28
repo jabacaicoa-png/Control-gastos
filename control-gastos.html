@@ -218,7 +218,7 @@ async function dLoad(){
       const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
       all.forEach(k=>{const tk=`__ts_${k}`;const lt=ST[tk]||0;const dt=dd[tk]||0;if(dt>lt){if(dd[k]!==undefined){ST[k]=dd[k];ST[tk]=dt;}}else if(!lt&&!dt){if(dd[k]!==undefined)ST[k]=dd[k];}});
       Object.keys(ST).forEach(k=>{if(!k.startsWith('__ts_')){const p=k.split('_');if(p.length>=2)try{localStorage.setItem(lKey(p[0],p[1]),JSON.stringify(ST[k]));}catch(e){}}});
-      toast('✓ Datos cargados desde Drive','#217346');render();
+      render();pulseSyncIcon();
     }else{await dSaveAll();}
   }catch(e){toast('⚠ Error al cargar desde Drive','#7F4F00');}
 }
