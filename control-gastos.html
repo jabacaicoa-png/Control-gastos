@@ -171,7 +171,7 @@ function updateDriveBar(){
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros&&!vistaPlani?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;vistaPlani=false;render();};
-  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;anioAnual=anio;renderAnual();};
+  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;vistaPlani=false;anioAnual=anio;renderAnual();};
   const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#006994':'#9E9E9E'};font-size:11px;`;vAh.textContent='CALC';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;vistaPlani=false;renderAhorros();};
   const vPl=document.createElement('button');vPl.className='gbtn';vPl.style.cssText=`background:${vistaPlani?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vPl.textContent='NOTAS';vPl.onclick=()=>{vistaPlani=true;vistaAhorros=false;vistaAnual=false;renderPlani();};
   gb.append(ub,dl,vG,vA,vAh,vPl);
@@ -846,6 +846,7 @@ function renderAnual(){
   ph.append(btnAA,lblAA,btnAD);bl.appendChild(ph);
   bl.appendChild(mkRow([
     {w:110,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='MES';return d;})()},
+    {w:60,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='AUM.';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='INGRESOS';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='GASTOS';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='RESTO';return d;})()},
@@ -853,13 +854,16 @@ function renderAnual(){
   let tI=0,tG2=0;
   MESES.forEach((mes,m)=>{
     if(!gST(anioAnual,m))lLoad(anioAnual,m);const d=gST(anioAnual,m);const rbg=m%2===0?'white':'#F5F5F5';
-    if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
+    const pct=getAumento(anioAnual,m);
+    const aumNode=pct?valD(`${pct}%`,{bold:true,color:'#375623'}):valD('—',{color:'#CCC'});
+    if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:60,bg:rbg,node:aumNode},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
     const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
     const tT2=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
     const tF=(d.fijos||[]).reduce((s,f)=>s+(Number(f.importe)||0),0);
     const ing=Number(d.sueldo||0)+tE;const gas=tT2+tF;const res=ing-gas;tI+=ing;tG2+=gas;
     bl.appendChild(mkRow([
       {w:110,bg:rbg,node:lbl(mes,{bold:true})},
+      {w:60,bg:rbg,node:aumNode},
       {w:120,bg:'#E2EFDA',node:valD(fmt(ing),{bold:true,color:'#375623'})},
       {w:120,bg:'#FCE4D6',node:valD(fmt(gas),{bold:true,color:'#833C00'})},
       {w:120,bg:res>=0?'#DAEEF3':'#FFCCCC',node:valD(fmt(res),{bold:true,color:res>=0?'#1F3864':'#C00000'})},
@@ -868,6 +872,7 @@ function renderAnual(){
   const tR=tI-tG2;
   bl.appendChild(mkRow([
     {w:110,bg:'#1F3864',node:(()=>{const d=E('div','lbl');d.style.cssText='color:white;font-weight:700;';d.textContent='TOTAL';return d;})()},
+    {w:60,bg:'#1F3864',node:E('div')},
     {w:120,bg:'#C6EFCE',node:valD(fmt(tI),{bold:true,color:'#375623'})},
     {w:120,bg:'#FCE4D6',node:valD(fmt(tG2),{bold:true,color:'#833C00'})},
     {w:120,bg:tR>=0?'#DAEEF3':'#FFCCCC',node:valD(fmt(tR),{bold:true,color:tR>=0?'#1F3864':'#C00000'})},
