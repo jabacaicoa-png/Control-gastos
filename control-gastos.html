@@ -928,7 +928,7 @@ function render(){
     {w:70,bg:'#E8F5E9',node:lbl('Pagado',{color:'#2E7D32'})},
     {w:100,bg:'#E8F5E9',node:valD(fmt(pagado),{bold:true,color:'#2E7D32'})},
     {w:40,bg:'#E8F5E9',node:(()=>{const d=E('div','val');d.style.color='#2E7D32';d.style.fontSize='10px';d.textContent=pctPag.toFixed(0)+'%';return d;})()},
-    {w:80,bg:'#FFF8E1',node:lbl('Falta paga',{color:'#B45309'})},
+    {w:80,bg:'#FFF8E1',node:lbl('Falta pagar',{color:'#B45309'})},
     {grow:true,bg:'#FFF8E1',node:valD(fmt(pendiente),{bold:true,color:'#B45309'})},
   ],'1px solid #E0C070'));
   const rBg=resto>=0?'#DAEEF3':'#FFCCCC',rC=resto>=0?'#1F3864':'#C00000';
