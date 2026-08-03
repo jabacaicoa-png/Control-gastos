@@ -889,6 +889,10 @@ function render(){
   const tF=mes.fijos.reduce((s,f)=>s+(Number(f.importe)||0),0);
   const tG=tT+tF,sueldo=Number(mes.sueldo)||0,iT=sueldo+tE,resto=iT-tG;
   const pct=iT>0?tG/iT*100:0,bc=pct>95?'#C00000':pct>80?'#E67E22':'#217346';
+  const tTPagado=mes.tarjetas.reduce((s,t)=>s+(t.fpago?(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0):0),0);
+  const tFPagado=mes.fijos.reduce((s,f)=>s+(f.fpago?(Number(f.importe)||0):0),0);
+  const pagado=tTPagado+tFPagado,pendiente=tG-pagado;
+  const pctPag=tG>0?pagado/tG*100:0;
 
   const app=document.getElementById('app');app.innerHTML='';
 
@@ -920,6 +924,13 @@ function render(){
   bl.appendChild(mkRow([{grow:true,bg:'#EDF7E5',node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
   bl.appendChild(mkRow([{w:90,bg:'#C6EFCE',node:lbl('Ingreso total',{bold:true,color:'#375623'})},{grow:true,bg:'#C6EFCE',node:valD(fmt(iT),{bold:true,color:'#375623'})}],'2px solid #AACFAA'));
   bl.appendChild(mkRow([{w:90,bg:'#FCE4D6',node:lbl('Gastos',{bold:true,color:'#833C00'})},{w:120,bg:'#FCE4D6',node:valD(fmt(tG),{bold:true,color:'#833C00'})},{w:50,bg:'#FCE4D6',node:(()=>{const d=E('div','val');d.style.color='#833C00';d.textContent=pct.toFixed(1)+'%';return d;})()},{grow:true,bg:'#FCE4D6',node:(()=>{const w=E('div');w.style.padding='0 8px';const b=E('div');b.style.cssText='height:10px;background:#F5CBA7;border-radius:2px;overflow:hidden;';const f=E('div');f.style.cssText=`height:100%;width:${Math.min(100,pct)}%;background:${bc};`;b.appendChild(f);w.appendChild(b);return w;})()}]));
+  bl.appendChild(mkRow([
+    {w:70,bg:'#E8F5E9',node:lbl('Pagado',{color:'#2E7D32'})},
+    {w:100,bg:'#E8F5E9',node:valD(fmt(pagado),{bold:true,color:'#2E7D32'})},
+    {w:40,bg:'#E8F5E9',node:(()=>{const d=E('div','val');d.style.color='#2E7D32';d.style.fontSize='10px';d.textContent=pctPag.toFixed(0)+'%';return d;})()},
+    {w:80,bg:'#FFF8E1',node:lbl('Falta paga',{color:'#B45309'})},
+    {grow:true,bg:'#FFF8E1',node:valD(fmt(pendiente),{bold:true,color:'#B45309'})},
+  ],'1px solid #E0C070'));
   const rBg=resto>=0?'#DAEEF3':'#FFCCCC',rC=resto>=0?'#1F3864':'#C00000';
   bl.appendChild(mkRow([{w:90,bg:rBg,node:lbl('Resto',{bold:true,color:rC})},{grow:true,bg:rBg,node:valD(fmt(resto),{bold:true,color:rC})}],'none'));
   cnt.appendChild(bl);
