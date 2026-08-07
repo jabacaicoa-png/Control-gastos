@@ -547,6 +547,7 @@ function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({ani
 async function replic({tipo,periodos,itemId,tarjetaId}){
   const o=gM();let payload;
   if(tipo==="sueldo")payload=o.sueldo;
+  else if(tipo==="sueldoBruto")payload=o.sueldoBruto;
   else if(tipo==="extra")payload=o.extras.find(e=>e.id===itemId);
   else if(tipo==="fijo")payload=o.fijos.find(f=>f.id===itemId);
   else if(tipo==="tarjetaGasto"){const t=o.tarjetas.find(t=>t.id===tarjetaId);payload=t?.gastos.find(g=>g.id===itemId);}
@@ -556,6 +557,7 @@ async function replic({tipo,periodos,itemId,tarjetaId}){
     const{anio:a,mes:m}=periodos[i];if(!gST(a,m))lLoad(a,m);
     let d=gST(a,m)??MV();let mod=false;const lb=PL(a,m);
     if(tipo==="sueldo"){if(d.sueldo!==0&&d.sueldo!==payload)conf.push(`${lb}: Sueldo ya tiene $${fmt(d.sueldo)}`);else{d.sueldo=payload;mod=true;}}
+    else if(tipo==="sueldoBruto"){const actual=Number(d.sueldoBruto)||0;if(actual!==0&&actual!==payload)conf.push(`${lb}: Bruto ya tiene $${fmt(actual)}`);else{d.sueldoBruto=payload;mod=true;}}
     else if(tipo==="extra"){const idx=d.extras.findIndex(e=>e.id===itemId);if(idx!==-1){if(d.extras[idx].importe!==0&&d.extras[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.extras[idx].importe)}`);else{d.extras[idx]={...d.extras[idx],...payload};mod=true;}}else{d.extras.push({...payload,id:uid()});mod=true;}}
     else if(tipo==="fijo"){const idx=d.fijos.findIndex(f=>f.id===itemId);if(idx!==-1){if(d.fijos[idx].importe!==0&&d.fijos[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.fijos[idx].importe)}`);else{d.fijos[idx]={...d.fijos[idx],...payload,venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)};mod=true;}}else{d.fijos.push({...payload,id:uid(),venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)});mod=true;}}
     else if(tipo==="tarjetaGasto"){
@@ -910,7 +912,7 @@ function render(){
   const pctActual=getAumento(anio,mesIdx);
   const pctStr=AUMENTOS.hasOwnProperty(`${anio}_${mesIdx}`)?`${pctActual}%`:'%';
   const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctStr;d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
-  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Ingreso',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
+  bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Ingreso',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldo','Sueldo',null,null,null))},{w:55,bg:'#E2EFDA',node:lbl('Bruto',{color:'#375623'})},{w:100,bg:'#E2EFDA',node:mkCell(mes.sueldoBruto||'',v=>sM(m=>({...m,sueldoBruto:Number(v)||0})),{type:'number',color:'#375623',celda:'sueldoBruto'})},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldoBruto','Bruto',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
@@ -928,7 +930,7 @@ function render(){
     {w:55,bg:'#E8F5E9',node:lbl('Pagado',{color:'#2E7D32'})},
     {w:85,bg:'#E8F5E9',node:valD(fmt(pagado),{bold:true,color:'#2E7D32'})},
     {w:32,bg:'#E8F5E9',node:(()=>{const d=E('div','val');d.style.color='#2E7D32';d.style.fontSize='10px';d.textContent=pctPag.toFixed(0)+'%';return d;})()},
-    {w:115,bg:'#FFF8E1',node:(()=>{const d=E('div','lbl');d.style.cssText='color:#B45309;font-size:11px;font-weight:700;';d.textContent='Pendiente';return d;})()},
+    {w:115,bg:'#FFF8E1',node:(()=>{const d=E('div','lbl');d.style.cssText='color:#B45309;font-size:11px;font-weight:700;';d.textContent='Pendiente de pago';return d;})()},
     {grow:true,bg:'#FFF8E1',node:valD(fmt(pendiente),{bold:true,color:'#B45309'})},
   ],'1px solid #E0C070'));
   const rBg=resto>=0?'#DAEEF3':'#FFCCCC',rC=resto>=0?'#1F3864':'#C00000';
