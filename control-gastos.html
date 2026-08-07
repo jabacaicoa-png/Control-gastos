@@ -921,16 +921,19 @@ function render(){
   const btnPct=(()=>{const d=E('div');d.style.cssText='width:42px;min-height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#375623;background:#C6EFCE;border-left:1px solid #AACFAA;flex-shrink:0;';d.textContent=pctStr;d.title='Aplicar aumento porcentual';d.onclick=()=>aumentoModal(Number(mes.sueldo)||0,nuevo=>sM(m=>({...m,sueldo:nuevo})));return d;})();
   bl.appendChild(mkRow([{w:90,bg:'#E2EFDA',node:lbl('Ingreso',{bold:true,color:'#375623'})},{w:120,bg:'#E2EFDA',node:mkCell(mes.sueldo,v=>sM(m=>({...m,sueldo:Number(v)||0})),{type:'number',bold:true,color:'#375623',celda:'sueldo'})},{w:42,bg:'#C6EFCE',node:btnPct},{w:55,bg:'#E2EFDA',node:lbl('Bruto',{color:'#375623'})},{w:100,bg:'#E2EFDA',node:mkCell(mes.sueldoBruto||'',v=>sM(m=>({...m,sueldoBruto:Number(v)||0})),{type:'number',color:'#375623',celda:'sueldoBruto'})},{w:26,bg:'#E2EFDA',node:repB(()=>openModal('sueldoAmbos','Sueldo (neto y bruto)',null,null,null))},{grow:true,bg:'#E2EFDA',node:E('div')}]));
 
+  const addExtraFn=()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]}));
   mes.extras.forEach((e,i)=>{
     bl.appendChild(mkRow([
-      {w:90,bg:'#EDF7E5',node:lbl(i===0?'+ extra':'',{italic:true,color:'#375623'})},
+      {w:90,bg:'#EDF7E5',node:i===0?addB('+ extra','#375623','#EDF7E5',addExtraFn):E('div')},
       {w:120,bg:'#EDF7E5',node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
       {w:26,bg:'#EDF7E5',node:repB(()=>openModal('extra',`EXTRA`,e.id,null,null))},
       {grow:true,bg:'#EDF7E5',node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
       {w:26,bg:'#EDF7E5',node:delB(()=>confirmarEliminar(`¿Eliminar "${e.concepto||'este ingreso'}"?`,()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)}))))},
     ]));
   });
-  bl.appendChild(mkRow([{grow:true,bg:'#EDF7E5',node:(()=>{const d=addB('+ ingreso extra','#375623','#EDF7E5',()=>sM(m=>({...m,extras:[...m.extras,{id:uid(),concepto:'',importe:0}]})));d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
+  if(mes.extras.length===0){
+    bl.appendChild(mkRow([{grow:true,bg:'#EDF7E5',node:(()=>{const d=addB('+ extra','#375623','#EDF7E5',addExtraFn);d.style.borderBottom='1px solid #AACFAA';return d;})()}],'1px solid #AACFAA'));
+  }
   bl.appendChild(mkRow([{w:90,bg:'#C6EFCE',node:lbl('Ingreso total',{bold:true,color:'#375623'})},{grow:true,bg:'#C6EFCE',node:valD(fmt(iT),{bold:true,color:'#375623'})}],'2px solid #AACFAA'));
   bl.appendChild(mkRow([{w:90,bg:'#FCE4D6',node:lbl('Gastos',{bold:true,color:'#833C00'})},{w:120,bg:'#FCE4D6',node:valD(fmt(tG),{bold:true,color:'#833C00'})},{w:50,bg:'#FCE4D6',node:(()=>{const d=E('div','val');d.style.color='#833C00';d.textContent=pct.toFixed(1)+'%';return d;})()},{grow:true,bg:'#FCE4D6',node:(()=>{const w=E('div');w.style.padding='0 8px';const b=E('div');b.style.cssText='height:10px;background:#F5CBA7;border-radius:2px;overflow:hidden;';const f=E('div');f.style.cssText=`height:100%;width:${Math.min(100,pct)}%;background:${bc};`;b.appendChild(f);w.appendChild(b);return w;})()}]));
   bl.appendChild(mkRow([
