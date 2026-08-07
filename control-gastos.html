@@ -926,9 +926,9 @@ function render(){
     bl.appendChild(mkRow([
       {w:90,bg:'#EDF7E5',node:i===0?addB('+ extra','#375623','#EDF7E5',addExtraFn):E('div')},
       {w:120,bg:'#EDF7E5',node:mkCell(e.importe,v=>uE(i,'importe',Number(v)||0),{type:'number',color:'#375623',celda:`ex${i}i`})},
+      {grow:true,bg:'#EDF7E5',node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
       {w:26,bg:'#EDF7E5',node:repB(()=>openModal('extra',`EXTRA`,e.id,null,null))},
       {w:26,bg:'#EDF7E5',node:delB(()=>confirmarEliminar(`¿Eliminar "${e.concepto||'este ingreso'}"?`,()=>sM(m=>({...m,extras:m.extras.filter((_,j)=>j!==i)}))))},
-      {grow:true,bg:'#EDF7E5',node:mkCell(e.concepto,v=>uE(i,'concepto',v),{color:'#375623',placeholder:'DESCRIPCIÓN',celda:`ex${i}c`})},
     ]));
   });
   if(mes.extras.length===0){
