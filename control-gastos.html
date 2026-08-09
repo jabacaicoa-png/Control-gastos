@@ -735,19 +735,24 @@ function renderAhorros(){
     const capUVA=monto/uvaVal,tm=tna/12,tea=(Math.pow(1+tm,12)-1)*100;
     const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const IVA_UVA=0.21;
     let cards='';
     [12,24,36,48,60].forEach(n=>{
       const cUVA=capUVA*tm*Math.pow(1+tm,n)/(Math.pow(1+tm,n)-1);
-      const cIni=cUVA*uvaVal,cFin=cUVA*uvaVal*Math.pow(1+ipc,n);
-      cards+=`<div onclick="proyUVA(${n},${cUVA},${uvaVal},${ipc})" style="background:#FFF5EE;border:2px solid #F4B183;padding:8px;text-align:center;cursor:pointer;">
+      // Amortización real para obtener el interés (y por ende el IVA) de la 1ra y la última cuota
+      let rem=capUVA,intM1=0,intMN=0;
+      for(let m=1;m<=n;m++){const intU=rem*tm;if(m===1)intM1=intU;if(m===n)intMN=intU;rem-=(cUVA-intU);}
+      const cIni=(cUVA+intM1*IVA_UVA)*uvaVal;
+      const cFin=(cUVA+intMN*IVA_UVA)*uvaVal*Math.pow(1+ipc,n);
+      cards+=`<div onclick="proyUVA(${n},${cUVA},${uvaVal},${ipc},${capUVA},${tm})" style="background:#FFF5EE;border:2px solid #F4B183;padding:8px;text-align:center;cursor:pointer;">
         <div style="font-size:10px;color:#888;text-transform:uppercase;">${n} cuotas</div>
         <div style="font-size:14px;color:#833C00;font-weight:700;margin:4px 0;">${fmt2(cIni)}</div>
-        <div style="font-size:9px;color:#999;">inicial · fin est. ${fmt2(cFin)}</div>
+        <div style="font-size:9px;color:#999;">c/IVA · fin est. ${fmt2(cFin)}</div>
       </div>`;
     });
     resU.innerHTML=`
       <div style="margin:6px 0;">${[`Monto: ${fmt2(monto)}`,`${fmtN2(capUVA)} UVAs`,`TNA: ${fmtN2(tna*100)}%`,`TEA: ${fmtN2(tea)}%`,`UVA: ${fmt2(uvaVal)}`].map(t=>`<span style="display:inline-block;background:#FFF5EE;border:1px solid #F4B183;padding:3px 6px;margin:2px;font-size:11px;color:#833C00;">${t}</span>`).join('')}</div>
-      <div style="font-size:11px;color:#555;padding:6px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Elegí un plazo</div>
+      <div style="font-size:11px;color:#555;padding:6px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Elegí un plazo (cuota con IVA incluido)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0;" id="u-cards-wrap">${cards}</div>
       <div id="u-proj-label" style="display:none;font-size:11px;color:#833C00;padding:6px 0;font-weight:700;"></div>
       <div id="u-proj-wrap" style="display:none;">
@@ -761,13 +766,20 @@ function renderAhorros(){
   panelU.append(btnU,resU);
 
   // Función proyección UVA global
-  window.proyUVA=(n,cUVA,uvaVal,ipc)=>{
+  window.proyUVA=(n,cUVA,uvaVal,ipc,capUVA,tm)=>{
     const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
-    let tbody='',vUVA=uvaVal;
-    for(let m=1;m<=n;m++){if(m>1)vUVA=vUVA*(1+ipc);const cp=cUVA*vUVA;const bg=m%2===0?'background:#F9F9F9':'';tbody+=`<tr style="${bg}"><td style="padding:4px 6px;">Cuota ${m}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(vUVA)}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(cp)}</td><td style="padding:4px 6px;color:#888;font-size:10px;">${m===1?'—':'+'+fmtN2(ipc*100,1)+'%'}</td></tr>`;}
+    let tbody='',vUVA=uvaVal,rem=capUVA;
+    for(let m=1;m<=n;m++){
+      if(m>1)vUVA=vUVA*(1+ipc);
+      const intU=rem*tm;rem-=(cUVA-intU);
+      const cuotaConIvaUVA=cUVA+intU*0.21;
+      const cp=cuotaConIvaUVA*vUVA;
+      const bg=m%2===0?'background:#F9F9F9':'';
+      tbody+=`<tr style="${bg}"><td style="padding:4px 6px;">Cuota ${m}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(vUVA)}</td><td style="padding:4px 6px;color:#833C00;font-weight:700;">${fmt2(cp)}</td><td style="padding:4px 6px;color:#888;font-size:10px;">${m===1?'—':'+'+fmtN2(ipc*100,1)+'%'}</td></tr>`;
+    }
     document.getElementById('u-proj-body').innerHTML=tbody;
-    document.getElementById('u-proj-label').textContent=`Proyección ${n} cuotas — IPC ${fmtN2(ipc*100,1)}% mensual`;
+    document.getElementById('u-proj-label').textContent=`Proyección ${n} cuotas (IVA incluido) — IPC ${fmtN2(ipc*100,1)}% mensual`;
     document.getElementById('u-proj-label').style.display='block';
     document.getElementById('u-proj-wrap').style.display='block';
   };
