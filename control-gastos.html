@@ -675,26 +675,26 @@ function renderAhorros(){
     const fmtN2=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
     const fmt0=n=>'$ '+Math.round(n).toLocaleString('es-AR');
     resD.innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-        <div style="background:#F0FFF4;border:2px solid #217346;padding:8px;text-align:center;">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">Mañana</div>
-          <div style="font-size:16px;color:#217346;font-weight:700;">${fmt0(cap*td)}</div>
-          <div style="font-size:10px;color:#999;">tasa diaria: ${fmtN2(td*100,4)}%</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:10px;">
+        <div style="background:#F0FFF4;border:2px solid #217346;padding:6px 3px;text-align:center;">
+          <div style="font-size:8px;color:#888;text-transform:uppercase;margin-bottom:2px;">Mañana</div>
+          <div style="font-size:12px;color:#217346;font-weight:700;">${fmt0(cap*td)}</div>
+          <div style="font-size:8px;color:#999;">tasa: ${fmtN2(td*100,4)}%</div>
         </div>
-        <div style="background:#F0FFF4;border:2px solid #217346;padding:8px;text-align:center;">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">7 días</div>
-          <div style="font-size:16px;color:#217346;font-weight:700;">${fmt0(c7-cap)}</div>
-          <div style="font-size:10px;color:#999;">total: ${fmt0(c7)}</div>
+        <div style="background:#F0FFF4;border:2px solid #217346;padding:6px 3px;text-align:center;">
+          <div style="font-size:8px;color:#888;text-transform:uppercase;margin-bottom:2px;">7 días</div>
+          <div style="font-size:12px;color:#217346;font-weight:700;">${fmt0(c7-cap)}</div>
+          <div style="font-size:8px;color:#999;">tot: ${fmt0(c7)}</div>
         </div>
-        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:8px;text-align:center;">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">30 días</div>
-          <div style="font-size:16px;color:#1F3864;font-weight:700;">${fmt0(c30-cap)}</div>
-          <div style="font-size:10px;color:#999;">total: ${fmt0(c30)}</div>
+        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:6px 3px;text-align:center;">
+          <div style="font-size:8px;color:#888;text-transform:uppercase;margin-bottom:2px;">30 días</div>
+          <div style="font-size:12px;color:#1F3864;font-weight:700;">${fmt0(c30-cap)}</div>
+          <div style="font-size:8px;color:#999;">tot: ${fmt0(c30)}</div>
         </div>
-        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:8px;text-align:center;">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px;">1 año</div>
-          <div style="font-size:16px;color:#1F3864;font-weight:700;">${fmt0(c365-cap)}</div>
-          <div style="font-size:10px;color:#999;">TEA: ${fmtN2((c365/cap-1)*100)}%</div>
+        <div style="background:#E2EFDA;border:2px solid #1F3864;padding:6px 3px;text-align:center;">
+          <div style="font-size:8px;color:#888;text-transform:uppercase;margin-bottom:2px;">1 año</div>
+          <div style="font-size:12px;color:#1F3864;font-weight:700;">${fmt0(c365-cap)}</div>
+          <div style="font-size:8px;color:#999;">TEA: ${fmtN2((c365/cap-1)*100)}%</div>
         </div>
       </div>
       <div style="font-size:11px;color:#555;padding:6px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Día a día — primeros 30 días</div>
