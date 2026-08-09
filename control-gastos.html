@@ -701,6 +701,11 @@ function renderAhorros(){
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead><tr style="background:#1F3864;color:white;"><th style="padding:5px 6px;text-align:left;">Día</th><th style="padding:5px 6px;">Ganancia</th><th style="padding:5px 6px;">Acumulado</th><th style="padding:5px 6px;">Total</th></tr></thead>
         <tbody>${(()=>{let t='',c2=cap;for(let d=1;d<=30;d++){const a=c2;c2=c2*(1+td);const bg=d%2===0?'background:#F9F9F9':'';t+=`<tr style="${bg}"><td style="padding:4px 6px;">Día ${d}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">+${fmt0(c2-a)}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">+${fmt0(c2-cap)}</td><td style="padding:4px 6px;">${fmt0(c2)}</td></tr>`;}return t;})()}</tbody>
+      </table>
+      <div style="font-size:11px;color:#555;padding:10px 0 4px;border-top:2px solid #E0E0E0;text-transform:uppercase;letter-spacing:1px;">Mes a mes — 12 meses (interés compuesto)</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:#1F3864;color:white;"><th style="padding:5px 6px;text-align:left;">Mes</th><th style="padding:5px 6px;">Ganancia</th><th style="padding:5px 6px;">Acumulado</th><th style="padding:5px 6px;">Total</th></tr></thead>
+        <tbody>${(()=>{let t='',cM=cap;const diasPorMes=365/12;for(let m=1;m<=12;m++){const a=cM;cM=cM*Math.pow(1+td,diasPorMes);const bg=m%2===0?'background:#F9F9F9':'';t+=`<tr style="${bg}"><td style="padding:4px 6px;">Mes ${m}</td><td style="padding:4px 6px;color:#1F3864;font-weight:700;">+${fmt0(cM-a)}</td><td style="padding:4px 6px;color:#1F3864;font-weight:700;">+${fmt0(cM-cap)}</td><td style="padding:4px 6px;">${fmt0(cM)}</td></tr>`;}return t;})()}</tbody>
       </table>`;
     resD.style.display='block';
   };
