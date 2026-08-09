@@ -763,12 +763,13 @@ function renderAhorros(){
         <div style="margin-top:14px;padding-top:10px;border-top:2px solid #E0E0E0;">
           <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">¿Pensás hacer un pago extra?</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <div><label style="display:block;font-size:10px;color:#888;margin-bottom:3px;">En la cuota N°</label><input id="pe-cuota" type="number" min="1" value="12" style="width:100%;border:2px solid #D0D0D0;padding:7px;font-size:13px;font-family:'Roboto',sans-serif;font-weight:700;outline:none;box-sizing:border-box;"/></div>
+            <div><label style="display:block;font-size:10px;color:#888;margin-bottom:3px;">Desde la cuota N°</label><input id="pe-cuota" type="number" min="1" value="12" style="width:100%;border:2px solid #D0D0D0;padding:7px;font-size:13px;font-family:'Roboto',sans-serif;font-weight:700;outline:none;box-sizing:border-box;"/></div>
             <div><label style="display:block;font-size:10px;color:#888;margin-bottom:3px;">Monto extra ($)</label><input id="pe-monto" type="number" min="0" step="1000" value="500000" style="width:100%;border:2px solid #D0D0D0;padding:7px;font-size:13px;font-family:'Roboto',sans-serif;font-weight:700;outline:none;box-sizing:border-box;"/></div>
           </div>
-          <div style="display:flex;gap:10px;margin-bottom:10px;font-size:11px;">
-            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="pe-modo" value="plazo" checked/> Reducir plazo</label>
-            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="pe-modo" value="cuota"/> Reducir cuota</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;font-size:11px;">
+            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="pe-modo" value="plazo" checked/> Pago único — reducir plazo</label>
+            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="pe-modo" value="cuota"/> Pago único — reducir cuota</label>
+            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="pe-modo" value="recurrente"/> Todos los meses desde esa cuota</label>
           </div>
           <button id="pe-btn" style="width:100%;background:#375623;color:white;border:none;padding:9px;font-size:12px;font-weight:700;cursor:pointer;">RECALCULAR CON PAGO EXTRA</button>
           <div id="pe-result" style="margin-top:10px;"></div>
@@ -813,6 +814,43 @@ function renderAhorros(){
     const resDiv=document.getElementById('pe-result');
     if(cuotaN<1||cuotaN>n){resDiv.innerHTML=`<div style="color:#C00000;font-size:12px;padding:8px;">La cuota tiene que estar entre 1 y ${n}.</div>`;return;}
     if(!montoExtra){resDiv.innerHTML=`<div style="color:#C00000;font-size:12px;padding:8px;">Cargá un monto extra.</div>`;return;}
+
+    if(modo==='recurrente'){
+      let vUVA=uvaVal,rem=capUVA,tbody='',mesFinal=0,totalExtraPagado=0;
+      const MAX=600;
+      for(let m=1;m<=MAX&&rem>0;m++){
+        if(m>1)vUVA=vUVA*(1+ipc);
+        const intU=rem*tm;
+        let amort=cUVA-intU,extraEsteMes=0;
+        if(m>=cuotaN){extraEsteMes=montoExtra/vUVA;amort+=extraEsteMes;totalExtraPagado+=montoExtra;}
+        rem-=amort;
+        if(m>=cuotaN){
+          const cuotaConIvaUVA=cUVA+intU*0.21;
+          const cp=cuotaConIvaUVA*vUVA+montoExtra;
+          const bg=(m-cuotaN)%2===0?'background:#F9F9F9':'';
+          tbody+=`<tr style="${bg}"><td style="padding:4px 6px;">Cuota ${m}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">${fmt2(vUVA)}</td><td style="padding:4px 6px;color:#217346;font-weight:700;">${fmt0(cp)}</td></tr>`;
+        }
+        mesFinal=m;
+      }
+      const ahorro=n-mesFinal;
+      resDiv.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div style="background:#E2EFDA;border:2px solid #217346;padding:8px;text-align:center;">
+            <div style="font-size:9px;color:#888;text-transform:uppercase;">Terminás en la cuota</div>
+            <div style="font-size:15px;color:#217346;font-weight:700;">${mesFinal}${rem>0?' (o antes)':''}</div>
+          </div>
+          <div style="background:#E2EFDA;border:2px solid #217346;padding:8px;text-align:center;">
+            <div style="font-size:9px;color:#888;text-transform:uppercase;">Cuotas que te ahorrás</div>
+            <div style="font-size:15px;color:#217346;font-weight:700;">${ahorro}</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#666;margin-bottom:8px;">Pagando ${fmt0(montoExtra)} extra por mes desde la cuota ${cuotaN}, en total vas a poner ${fmt0(totalExtraPagado)} de más y vas a terminar de pagar ${ahorro} cuotas antes de lo previsto.</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead><tr style="background:#217346;color:white;"><th style="padding:5px 6px;text-align:left;">Cuota</th><th style="padding:5px 6px;">Valor UVA</th><th style="padding:5px 6px;">Cuota + extra $</th></tr></thead>
+          <tbody>${tbody}</tbody>
+        </table>`;
+      return;
+    }
     // Recorre las cuotas normales hasta cuotaN para saber cuánto capital queda y el valor de la UVA en ese momento
     let vUVA=uvaVal,rem=capUVA;
     for(let m=1;m<=cuotaN;m++){
