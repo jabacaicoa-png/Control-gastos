@@ -662,7 +662,8 @@ function renderAhorros(){
   fDt.appendChild(inDt);
   gD.append(fDc,fDt);panelD.appendChild(gD);
   // Restaurar valores guardados
-  try{const sd=localStorage.getItem('calc_diario');if(sd){const p=JSON.parse(sd);inDc.value=p.cap||1000000;inDt.value=p.tna||0;}}catch(e){}
+  let hayGuardadoD=false;
+  try{const sd=localStorage.getItem('calc_diario');if(sd){const p=JSON.parse(sd);inDc.value=p.cap||1000000;inDt.value=p.tna||0;hayGuardadoD=true;}}catch(e){}
   const btnD=document.createElement('button');btnD.textContent='CALCULAR';btnD.style.cssText='width:100%;background:#006994;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resD=E('div');resD.style.display='none';resD.id='d-res';
   btnD.onclick=()=>{
@@ -710,6 +711,7 @@ function renderAhorros(){
     resD.style.display='block';
   };
   panelD.append(btnD,resD);
+  if(hayGuardadoD&&Number(inDc.value)&&Number(inDt.value))btnD.click();
 
   // ── PANEL UVA ──
   const gU=E('div');gU.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
@@ -717,11 +719,13 @@ function renderAhorros(){
   gU.append(mkField('Monto ($)','u-monto','16724500','1'),mkField('TNA (%)','u-tna','19.9','0.1'),mkField('Valor UVA ($)','u-uva','1990.78','0.01'),mkField('IPC mensual (%)','u-ipc','2.7','0.1'));
   panelU.appendChild(gU);
   // Restaurar valores guardados UVA
+  let hayGuardadoU=false;
   try{const su=localStorage.getItem('calc_uva');if(su){const p=JSON.parse(su);
     document.getElementById('u-monto').value=p.monto||16724500;
     document.getElementById('u-tna').value=p.tna||19.9;
     document.getElementById('u-uva').value=p.uva||1990.78;
     document.getElementById('u-ipc').value=p.ipc||2.7;
+    hayGuardadoU=true;
   }}catch(e){}
   const btnU=document.createElement('button');btnU.textContent='CALCULAR';btnU.style.cssText='width:100%;background:#833C00;color:white;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;';
   const resU=E('div');resU.style.display='none';
@@ -778,6 +782,7 @@ function renderAhorros(){
     resU.style.display='block';
   };
   panelU.append(btnU,resU);
+  if(hayGuardadoU)btnU.click();
 
   // Función proyección UVA global
   window.proyUVA=(n,cUVA,uvaVal,ipc,capUVA,tm)=>{
