@@ -531,12 +531,7 @@ const uE=(i,f,v)=>sM(m=>{const a=[...m.extras];a[i]={...a[i],[f]:v};return{...m,
 const uT=(ti,f,v)=>{
   if(f==="_d"){
     const mes=gM();const t=mes.tarjetas[ti];
-    if(t){
-      const origenes=new Set();
-      (t.gastos||[]).forEach(g=>{if(Number(g.cuotaTotal)>1)origenes.add(g.cuotaOrigen||g.id);});
-      origenes.forEach(oid=>eliminarPropagadas(t.id,oid,mesIdx,anio));
-      eliminarTarjetaVaciaFutura(t.id,mesIdx,anio);
-    }
+    if(t)eliminarTarjetaDesdeAqui(t.id,mesIdx,anio);
     sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));
   }
   else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});
@@ -603,18 +598,15 @@ async function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
   if(driveReady)dDebounce();
 }
 
-const TARJETAS_BASE=['tSAN','tVNA','tMNA','tMAC'];
-// Borra por completo (no solo los gastos) las copias de esta tarjeta que hayan quedado vacías en meses futuros —
-// típicamente restos de tarjetas nuevas creadas antes de esta corrección.
-async function eliminarTarjetaVaciaFutura(tarjetaId,desdeMes,desdeAnio){
-  if(TARJETAS_BASE.includes(tarjetaId))return; // nunca borrar las 4 tarjetas predefinidas de otros meses
+// Elimina la tarjeta (tenga o no gastos cargados) desde este mes en adelante, sin excepciones.
+async function eliminarTarjetaDesdeAqui(tarjetaId,desdeMes,desdeAnio){
   for(let i=1;i<=36;i++){
     let nm=desdeMes+i,na=desdeAnio;if(nm>11){na+=Math.floor(nm/12);nm=nm%12;}
-    if(!gST(na,nm))lLoad(na,nm);const d=gST(na,nm);if(!d)continue;
-    const ti=d.tarjetas?.findIndex(t=>t.id===tarjetaId)??-1;if(ti===-1)continue;
-    if((d.tarjetas[ti].gastos||[]).length===0&&(d.tarjetas[ti].gastosUSD||[]).length===0){
-      d.tarjetas=d.tarjetas.filter((_,j)=>j!==ti);sST(na,nm,d);lSave(na,nm);
-    }
+    if(!gST(na,nm))lLoad(na,nm);
+    let d=gST(na,nm)??MV();
+    const antes=d.tarjetas.length;
+    d.tarjetas=d.tarjetas.filter(t=>t.id!==tarjetaId);
+    if(d.tarjetas.length!==antes){sST(na,nm,d);lSave(na,nm);}
   }
   if(driveReady)dDebounce();
 }
