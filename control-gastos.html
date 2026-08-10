@@ -528,7 +528,18 @@ function secHd(title,bg,color,total){
 
 const uF=(i,f,v)=>sM(m=>{const a=[...m.fijos];a[i]={...a[i],[f]:v};return{...m,fijos:a};});
 const uE=(i,f,v)=>sM(m=>{const a=[...m.extras];a[i]={...a[i],[f]:v};return{...m,extras:a};});
-const uT=(ti,f,v)=>{if(f==="_d")sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});};
+const uT=(ti,f,v)=>{
+  if(f==="_d"){
+    const mes=gM();const t=mes.tarjetas[ti];
+    if(t){
+      const origenes=new Set();
+      (t.gastos||[]).forEach(g=>{if(Number(g.cuotaTotal)>1)origenes.add(g.cuotaOrigen||g.id);});
+      origenes.forEach(oid=>eliminarPropagadas(t.id,oid,mesIdx,anio));
+    }
+    sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));
+  }
+  else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});
+};
 const uG=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];gs[gi]={...gs[gi],[f]:v};if(f==='cuotaTotal')gs[gi].cuotaNum=1;a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});
 // Replicar cuotas automáticamente cuando se carga cuotaTotal > 1
 async function autoReplicarCuotas(ti,gi){
@@ -545,13 +556,13 @@ const uGUSD=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastosUSD|
 function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({anio:a+Math.floor(t/12),mes:t%12});}return r;}
 
 async function replic({tipo,periodos,itemId,tarjetaId}){
-  const o=gM();let payload;
+  const o=gM();let payload,tarjetaNombre=null;
   if(tipo==="sueldo")payload=o.sueldo;
   else if(tipo==="sueldoBruto")payload=o.sueldoBruto;
   else if(tipo==="sueldoAmbos")payload={sueldo:o.sueldo,sueldoBruto:o.sueldoBruto};
   else if(tipo==="extra")payload=o.extras.find(e=>e.id===itemId);
   else if(tipo==="fijo")payload=o.fijos.find(f=>f.id===itemId);
-  else if(tipo==="tarjetaGasto"){const t=o.tarjetas.find(t=>t.id===tarjetaId);payload=t?.gastos.find(g=>g.id===itemId);}
+  else if(tipo==="tarjetaGasto"){const tOrig=o.tarjetas.find(t=>t.id===tarjetaId);payload=tOrig?.gastos.find(g=>g.id===itemId);tarjetaNombre=tOrig?.nombre||null;}
   if(!payload&&payload!==0)return{ok:0,conf:["Ítem no encontrado"]};
   const conf=[];let ok=0;
   for(let i=0;i<periodos.length;i++){
@@ -569,7 +580,7 @@ async function replic({tipo,periodos,itemId,tarjetaId}){
     else if(tipo==="fijo"){const idx=d.fijos.findIndex(f=>f.id===itemId);if(idx!==-1){if(d.fijos[idx].importe!==0&&d.fijos[idx].importe!==payload.importe)conf.push(`${lb}: "${payload.concepto}" ya tiene $${fmt(d.fijos[idx].importe)}`);else{d.fijos[idx]={...d.fijos[idx],...payload,venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)};mod=true;}}else{d.fijos.push({...payload,id:uid(),venc:actualizarMesFecha(payload.venc,m),fpago:actualizarMesFecha(payload.fpago,m)});mod=true;}}
     else if(tipo==="tarjetaGasto"){
       let ti=d.tarjetas.findIndex(t=>t.id===tarjetaId);
-      if(ti===-1){d.tarjetas.push({id:tarjetaId,nombre:tarjetaId,cierre:"",venc:"",fpago:"",gastos:[]});ti=d.tarjetas.length-1;}
+      if(ti===-1){d.tarjetas.push({id:tarjetaId,nombre:tarjetaNombre||tarjetaId,cierre:"",venc:"",fpago:"",gastos:[]});ti=d.tarjetas.length-1;}
       const cn=1+(i+1);const dup=d.tarjetas[ti].gastos.find(g=>g.cuotaOrigen===itemId);
       if(dup&&dup.importe!==0)conf.push(`${lb}: "${payload.concepto}" cuota ${cn}/${payload.cuotaTotal} ya existe`);
       else{d.tarjetas[ti].gastos=d.tarjetas[ti].gastos.filter(g=>g.cuotaOrigen!==itemId);d.tarjetas[ti].gastos.push({id:uid(),concepto:payload.concepto,importe:payload.importe,cuotaTotal:payload.cuotaTotal,cuotaNum:cn,cuotaOrigen:itemId});mod=true;}
