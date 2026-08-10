@@ -1217,7 +1217,7 @@ function render(){
           {w:24,bg:rbg,node:E('div')},
           {w:24,bg:rbg,node:chkG},
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
-          {w:90,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=fmt(g.importe);return d;})():mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',celda:`tg${ti}-${gi}i`})},
+          {w:90,bg:rbg,node:mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',color:prop?'#A07050':undefined,celda:`tg${ti}-${gi}i`})},
           {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>{const nv=Math.max(1,Number(v)||1);uG(ti,gi,'cuotaTotal',nv);if(nv>1)setTimeout(()=>autoReplicarCuotas(ti,gi),300);},{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
           {w:26,bg:rbg,node:(!prop&&Number(g.cuotaTotal)<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
