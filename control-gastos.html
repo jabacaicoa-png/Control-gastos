@@ -1191,9 +1191,10 @@ function render(){
 
       (t.gastos||[]).forEach((g,gi)=>{
         const prop=g.cuotaNum>1&&Number(g.cuotaTotal)>1,esC=Number(g.cuotaTotal)>1;
+        const esUltimaCuota=esC&&Number(g.cuotaNum)===Number(g.cuotaTotal);
         const verificado=esVerif(g.id);
         const debito=esDebito(g.id);
-        const rbg=verificado?'#FFFDE7':debito?'#F0FFF0':(gi%2===0?'#FFFAF7':'#FFF3EC');
+        const rbg=verificado?'#FFFDE7':debito?'#F0FFF0':esUltimaCuota?'#FFE0B2':(gi%2===0?'#FFFAF7':'#FFF3EC');
         const chkG=(!prop&&g.cuotaTotal<=1)?(()=>{const d=E('div');d.style.cssText='width:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;user-select:none;';d.textContent=esFijo('tg_'+g.id)?'☑':'☐';d.onclick=()=>toggleFijo('tg_'+g.id);return d;})():E('div');
         const btnVerif=(()=>{
           const d=E('div');
@@ -1219,7 +1220,7 @@ function render(){
           {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
           {w:90,bg:rbg,node:mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',color:prop?'#A07050':undefined,celda:`tg${ti}-${gi}i`})},
           {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>{const nv=Math.max(1,Number(v)||1);uG(ti,gi,'cuotaTotal',nv);if(nv>1)setTimeout(()=>autoReplicarCuotas(ti,gi),300);},{type:'number',celda:`tg${ti}-${gi}ct`})},
-          {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
+          {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esUltimaCuota?'#B45309':esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
           {w:26,bg:rbg,node:(!prop&&Number(g.cuotaTotal)<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
           {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto'}"?`+((!prop&&g.cuotaTotal>1)?' Se eliminarán las cuotas siguientes.':''),async()=>{
             sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
