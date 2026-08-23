@@ -954,8 +954,10 @@ function renderPlani(){
   ph.append(phTxt,btnAddCol);bl.appendChild(ph);
 
   // Tabla
+  if(!PLANI.colWidths)PLANI.colWidths=[];
+  while(PLANI.colWidths.length<PLANI.cols.length)PLANI.colWidths.push(120);
   const tbl=document.createElement('table');
-  tbl.style.cssText='border-collapse:collapse;min-width:100%;';
+  tbl.style.cssText='border-collapse:collapse;table-layout:fixed;';
 
   // Header de columnas
   const thead=document.createElement('thead');
@@ -963,15 +965,39 @@ function renderPlani(){
   // Celda vacía para número de fila
   const thNum=document.createElement('th');thNum.style.cssText='background:#5C3D2E;width:28px;border:1px solid #8B5E3C;';trH.appendChild(thNum);
   PLANI.cols.forEach((col,ci)=>{
-    const th=document.createElement('th');th.style.cssText='background:#5C3D2E;border:1px solid #8B5E3C;padding:0;min-width:120px;';
+    const w=PLANI.colWidths[ci]||120;
+    const th=document.createElement('th');th.style.cssText=`background:#5C3D2E;border:1px solid #8B5E3C;padding:0;width:${w}px;position:relative;`;
     const inp=document.createElement('input');inp.value=col;inp.placeholder=String.fromCharCode(65+ci);
     Object.assign(inp.style,{width:'100%',background:'transparent',border:'none',outline:'none',color:'white',fontWeight:'700',fontFamily:"'Roboto',sans-serif",fontSize:'13px',padding:'5px 6px',textAlign:'center',textTransform:'none'});
     inp.onblur=()=>{if(inp.value!==PLANI.cols[ci]){pushPlaniHistory();PLANI.cols[ci]=inp.value;savePlani();}};
     th.appendChild(inp);
     // Botón eliminar columna
     const btnDel=document.createElement('span');btnDel.textContent='×';btnDel.style.cssText='color:#F4B183;cursor:pointer;padding:0 4px;font-size:12px;';
-    btnDel.onclick=()=>{if(PLANI.cols.length<=1)return;confirmarEliminar(`¿Eliminar la columna "${col||String.fromCharCode(65+ci)}"?`,()=>{pushPlaniHistory();PLANI.cols.splice(ci,1);PLANI.rows.forEach(r=>r.splice(ci,1));savePlani();renderPlani();});};
+    btnDel.onclick=()=>{if(PLANI.cols.length<=1)return;confirmarEliminar(`¿Eliminar la columna "${col||String.fromCharCode(65+ci)}"?`,()=>{pushPlaniHistory();PLANI.cols.splice(ci,1);PLANI.colWidths.splice(ci,1);PLANI.rows.forEach(r=>r.splice(ci,1));savePlani();renderPlani();});};
     th.appendChild(btnDel);
+    // Manija de redimensionar (tipo Excel)
+    const handle=document.createElement('div');
+    handle.style.cssText='position:absolute;right:-3px;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;z-index:2;';
+    handle.onpointerdown=(e)=>{
+      e.preventDefault();e.stopPropagation();
+      handle.setPointerCapture(e.pointerId);
+      const startX=e.clientX,startW=PLANI.colWidths[ci]||120;
+      const aplicar=(nw)=>{
+        th.style.width=nw+'px';
+        tbody.querySelectorAll('tr').forEach(tr=>{const td=tr.children[ci+1];if(td)td.style.width=nw+'px';});
+      };
+      const onMove=(ev)=>{aplicar(Math.max(50,startW+(ev.clientX-startX)));};
+      const onUp=(ev)=>{
+        handle.releasePointerCapture(ev.pointerId);
+        handle.removeEventListener('pointermove',onMove);
+        handle.removeEventListener('pointerup',onUp);
+        const nw=Math.max(50,startW+(ev.clientX-startX));
+        PLANI.colWidths[ci]=nw;savePlani();
+      };
+      handle.addEventListener('pointermove',onMove);
+      handle.addEventListener('pointerup',onUp);
+    };
+    th.appendChild(handle);
     trH.appendChild(th);
   });
   thead.appendChild(trH);tbl.appendChild(thead);
@@ -986,9 +1012,10 @@ function renderPlani(){
     tdNum.onclick=()=>confirmarEliminar(`¿Eliminar fila ${ri+1}?`,()=>{pushPlaniHistory();PLANI.rows.splice(ri,1);savePlani();renderPlani();});
     tr.appendChild(tdNum);
     PLANI.cols.forEach((col,ci)=>{
-      const td=document.createElement('td');td.style.cssText='border:1px solid #D4B896;padding:0;';
+      const w=PLANI.colWidths[ci]||120;
+      const td=document.createElement('td');td.style.cssText=`border:1px solid #D4B896;padding:0;width:${w}px;`;
       const inp=document.createElement('input');inp.value=row[ci]||'';
-      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Roboto',sans-serif",fontSize:'13px',fontWeight:'700',padding:'5px 6px',minWidth:'120px',textTransform:'none'});
+      Object.assign(inp.style,{width:'100%',border:'none',outline:'none',background:'transparent',fontFamily:"'Roboto',sans-serif",fontSize:'13px',fontWeight:'700',padding:'5px 6px',textTransform:'none'});
       inp.onfocus=()=>{inp.style.background='#FFF9C4';};
       inp.onblur=()=>{if(inp.value!==(row[ci]||'')){pushPlaniHistory();PLANI.rows[ri][ci]=inp.value;savePlani();}inp.style.background='transparent';dDebounce();};
       inp.onkeydown=(e)=>{
