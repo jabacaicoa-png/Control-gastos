@@ -84,7 +84,7 @@ const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
   {id:"tMAC",nombre:"VISA MACRO",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
 ]});
 
-const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear(),vistaAhorros=false,vistaPlani=false;
+const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear(),vistaAhorros=false,vistaPlani=false,vistaHormiga=false;
 let PLANI={cols:['A','B','C','D'],rows:[['','','','']]};
 try{const p=localStorage.getItem('planilla_data');if(p)PLANI=JSON.parse(p);}catch(e){}
 function savePlani(){try{localStorage.setItem('planilla_data',JSON.stringify(PLANI));}catch(e){}}
@@ -110,6 +110,11 @@ try{const d=localStorage.getItem('debitos_auto');if(d)DEBITOS=JSON.parse(d);}cat
 function saveDebitos(){try{localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
 function toggleDebito(id){DEBITOS[id]=!DEBITOS[id];if(!DEBITOS[id])delete DEBITOS[id];saveDebitos();render();}
 function esDebito(id){return!!DEBITOS[id];}
+
+// Gastos hormiga: lista acumulada de todos los tiempos, cada uno con su mes/año de carga
+let HORMIGAS=[];
+try{const h=localStorage.getItem('gastos_hormiga');if(h)HORMIGAS=JSON.parse(h);}catch(e){}
+function saveHormigas(){try{localStorage.setItem('gastos_hormiga',JSON.stringify(HORMIGAS));}catch(e){}}
 
 const HISTORY=[];
 function pushHistory(){try{const snap=JSON.stringify(ST[`${anio}_${mesIdx}`]??MV());HISTORY.push({anio,mesIdx,data:snap});if(HISTORY.length>10)HISTORY.shift();}catch(e){}}
@@ -170,11 +175,13 @@ function updateDriveBar(){
   }
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
-  const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros&&!vistaPlani?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;vistaPlani=false;render();};
-  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;vistaPlani=false;anioAnual=anio;renderAnual();};
-  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#006994':'#9E9E9E'};font-size:11px;`;vAh.textContent='CALC';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;vistaPlani=false;renderAhorros();};
-  const vPl=document.createElement('button');vPl.className='gbtn';vPl.style.cssText=`background:${vistaPlani?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vPl.textContent='NOTAS';vPl.onclick=()=>{vistaPlani=true;vistaAhorros=false;vistaAnual=false;renderPlani();};
-  gb.append(ub,dl,vG,vA,vAh,vPl);
+  const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros&&!vistaPlani&&!vistaHormiga?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;render();};
+  const bH=document.createElement('button');bH.className='gbtn';bH.style.cssText='background:#6A4C93;font-size:20px;';bH.textContent='🐜';bH.title='Cargar gasto hormiga';bH.onclick=hormigaModal;
+  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;anioAnual=anio;renderAnual();};
+  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#006994':'#9E9E9E'};font-size:11px;`;vAh.textContent='CALC';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;vistaPlani=false;vistaHormiga=false;renderAhorros();};
+  const vPl=document.createElement('button');vPl.className='gbtn';vPl.style.cssText=`background:${vistaPlani?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vPl.textContent='NOTAS';vPl.onclick=()=>{vistaPlani=true;vistaAhorros=false;vistaAnual=false;vistaHormiga=false;renderPlani();};
+  const vH=document.createElement('button');vH.className='gbtn';vH.style.cssText=`background:${vistaHormiga?'#6A4C93':'#9E9E9E'};font-size:11px;`;vH.textContent='HORMIGA';vH.onclick=()=>{vistaHormiga=true;vistaAnual=false;vistaAhorros=false;vistaPlani=false;renderHormiga();};
+  gb.append(ub,dl,vG,bH,vA,vAh,vPl,vH);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
@@ -183,7 +190,7 @@ async function dSaveAll(){
   if(!driveReady||!accessToken)return;
   const calcD=JSON.parse(localStorage.getItem('calc_diario')||'{}');
   const calcU=JSON.parse(localStorage.getItem('calc_uva')||'{}');
-  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS, __calcD:calcD, __calcU:calcU, __plani:PLANI};
+  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS, __calcD:calcD, __calcU:calcU, __plani:PLANI, __hormigas:HORMIGAS};
   const body=JSON.stringify(backup);
   try{
     if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
@@ -213,6 +220,7 @@ async function dLoad(){
       if(dd.__calcD){try{localStorage.setItem('calc_diario',JSON.stringify(dd.__calcD));}catch(e){}}
       if(dd.__calcU){try{localStorage.setItem('calc_uva',JSON.stringify(dd.__calcU));}catch(e){}}
       if(dd.__plani){try{Object.assign(PLANI,dd.__plani);localStorage.setItem('planilla_data',JSON.stringify(PLANI));}catch(e){}}
+      if(dd.__hormigas){try{HORMIGAS.length=0;dd.__hormigas.forEach(h=>HORMIGAS.push(h));localStorage.setItem('gastos_hormiga',JSON.stringify(HORMIGAS));}catch(e){}}
       // Merge datos de meses
       const skipKeys=new Set(['__fijos','__verif','__debitos']);
       const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
@@ -388,6 +396,50 @@ function aumentoModal(sueldoActual, onSave, brutoActual){
     saveAumento(anio,mesIdx,pct);
     onSave(nuevo,pct);
   };
+}
+
+function hormigaModal(){
+  const mc=document.getElementById('modal-container');
+  const hoy=new Date();
+  const fechaISO=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  const fechaTexto=`${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${hoy.getFullYear()}`;
+  mc.innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-title">🐜 Gasto hormiga</div>
+        <div class="modal-info">Fecha: <b>${fechaTexto}</b></div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px;">Detalle</label>
+          <input id="horm-detalle" type="text" placeholder="Ej: kiosco, panadería..."
+            style="width:100%;padding:9px;font-size:14px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #6A4C93;outline:none;box-sizing:border-box;"/>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px;">Monto ($)</label>
+          <input id="horm-monto" type="number" min="0" step="1" placeholder="0"
+            style="width:100%;padding:9px;font-size:16px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #6A4C93;outline:none;box-sizing:border-box;"/>
+        </div>
+        <div class="modal-btns">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" id="btn-horm-save">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  const inpDet=document.getElementById('horm-detalle');
+  const inpMonto=document.getElementById('horm-monto');
+  setTimeout(()=>{inpDet.focus();},100);
+  const guardar=()=>{
+    const detalle=inpDet.value.trim();
+    const monto=Number(inpMonto.value)||0;
+    if(!detalle||!monto){toast('⚠ Cargá detalle y monto','#7F4F00');return;}
+    HORMIGAS.push({id:uid(),fecha:fechaISO,concepto:detalle,importe:monto});
+    saveHormigas();dDebounce();
+    closeModal();
+    toast('✓ Gasto hormiga cargado','#6A4C93');
+    if(vistaHormiga)renderHormiga();
+  };
+  inpMonto.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();guardar();}if(e.key==='Escape')closeModal();});
+  inpDet.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inpMonto.focus();}});
+  document.getElementById('btn-horm-save').onclick=guardar;
 }
 
 function editModal(label, val, onSave, tipo='text'){
@@ -1042,6 +1094,61 @@ function renderPlani(){
   bl.appendChild(btnAddRow);
 }
 
+function renderHormiga(){
+  const app=document.getElementById('app');app.innerHTML='';
+  const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
+  const cnt=E('div','content');cnt.style.overflowX='auto';app.appendChild(cnt);
+  const bl=E('div','block');cnt.appendChild(bl);
+  const ph=E('div','ph');ph.style.cssText='background:#6A4C93;padding:5px 10px;color:white;font-weight:700;font-size:14px;';
+  ph.textContent='🐜 GASTO HORMIGA';
+  bl.appendChild(ph);
+
+  const tbl=document.createElement('table');
+  tbl.style.cssText='border-collapse:collapse;width:100%;';
+  const thead=document.createElement('thead');
+  const trH=document.createElement('tr');
+  ['Fecha','Detalle','Gasto',''].forEach((txt,i)=>{
+    const th=document.createElement('th');
+    th.style.cssText=`background:#4E3572;color:white;border:1px solid #6A4C93;padding:6px 8px;font-size:12px;text-align:${i===2?'right':'left'};`;
+    th.textContent=txt;trH.appendChild(th);
+  });
+  thead.appendChild(trH);tbl.appendChild(thead);
+
+  const tbody=document.createElement('tbody');
+  const ordenados=[...HORMIGAS].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  let total=0;
+  ordenados.forEach((h,idx)=>{
+    total+=Number(h.importe)||0;
+    const tr=document.createElement('tr');
+    tr.style.background=idx%2===0?'#F5F0FA':'white';
+    const [y,m,d]=h.fecha.split('-');
+    const tdF=document.createElement('td');tdF.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;white-space:nowrap;';tdF.textContent=`${d}/${m}/${y}`;
+    const tdD=document.createElement('td');tdD.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;';tdD.textContent=h.concepto;
+    const tdG=document.createElement('td');tdG.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;text-align:right;font-weight:700;color:#4E3572;';tdG.textContent=fmt(h.importe);
+    const tdX=document.createElement('td');tdX.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;text-align:center;width:26px;';
+    const btnX=document.createElement('span');btnX.textContent='×';btnX.style.cssText='color:#C00000;cursor:pointer;font-weight:700;';
+    btnX.onclick=()=>confirmarEliminar(`¿Eliminar "${h.concepto}" (${fmt(h.importe)})?`,()=>{HORMIGAS=HORMIGAS.filter(x=>x.id!==h.id);saveHormigas();dDebounce();renderHormiga();});
+    tdX.appendChild(btnX);
+    tr.append(tdF,tdD,tdG,tdX);
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+
+  const tfoot=document.createElement('tfoot');
+  const trT=document.createElement('tr');
+  const tdTL=document.createElement('td');tdTL.colSpan=2;tdTL.style.cssText='background:#4E3572;color:white;padding:6px 8px;font-weight:700;font-size:12px;';tdTL.textContent='TOTAL';
+  const tdTV=document.createElement('td');tdTV.style.cssText='background:#4E3572;color:white;padding:6px 8px;font-weight:700;text-align:right;font-size:13px;';tdTV.textContent=fmt(total);
+  const tdTE=document.createElement('td');tdTE.style.cssText='background:#4E3572;';
+  trT.append(tdTL,tdTV,tdTE);tfoot.appendChild(trT);tbl.appendChild(tfoot);
+
+  bl.appendChild(tbl);
+  if(!ordenados.length){
+    const vac=E('div');vac.style.cssText='padding:16px;color:#999;font-size:13px;text-align:center;';
+    vac.textContent='Todavía no cargaste ningún gasto hormiga. Usá el botón 🐜 de arriba.';
+    bl.appendChild(vac);
+  }
+}
+
 function renderAnual(){
   const app=document.getElementById('app');app.innerHTML='';
   const gb=E('div','gdrive-bar');gb.id='drive-bar';app.appendChild(gb);updateDriveBar();
@@ -1060,13 +1167,17 @@ function renderAnual(){
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='INGRESOS';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='GASTOS';return d;})()},
     {w:120,bg:'#1F3864',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='RESTO';return d;})()},
+    {w:100,bg:'#6A4C93',node:(()=>{const d=E('div','th');d.style.color='white';d.textContent='🐜 HORMIGA';return d;})()},
   ],'2px solid #9E9E9E'));
-  let tI=0,tG2=0;
+  let tI=0,tG2=0,tH=0;
   MESES.forEach((mes,m)=>{
     if(!gST(anioAnual,m))lLoad(anioAnual,m);const d=gST(anioAnual,m);const rbg=m%2===0?'white':'#F5F5F5';
     const pct=getAumento(anioAnual,m);
     const aumNode=pct?valD(`${pct}%`,{bold:true,color:'#375623'}):valD('—',{color:'#CCC'});
-    if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:60,bg:rbg,node:aumNode},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
+    const totHormigaMes=HORMIGAS.filter(h=>{const[y,mm]=h.fecha.split('-');return Number(y)===anioAnual&&Number(mm)===m+1;}).reduce((s,h)=>s+(Number(h.importe)||0),0);
+    tH+=totHormigaMes;
+    const hormigaNode=totHormigaMes?valD(fmt(totHormigaMes),{bold:true,color:'#6A4C93'}):valD('—',{color:'#CCC'});
+    if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:60,bg:rbg,node:aumNode},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:100,bg:rbg,node:hormigaNode}]));return;}
     const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
     const tT2=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
     const tF=(d.fijos||[]).reduce((s,f)=>s+(Number(f.importe)||0),0);
@@ -1077,6 +1188,7 @@ function renderAnual(){
       {w:120,bg:'#E2EFDA',node:valD(fmt(ing),{bold:true,color:'#375623'})},
       {w:120,bg:'#FCE4D6',node:valD(fmt(gas),{bold:true,color:'#833C00'})},
       {w:120,bg:res>=0?'#DAEEF3':'#FFCCCC',node:valD(fmt(res),{bold:true,color:res>=0?'#1F3864':'#C00000'})},
+      {w:100,bg:'#EDE4F5',node:hormigaNode},
     ]));
   });
   const tR=tI-tG2;
@@ -1086,6 +1198,7 @@ function renderAnual(){
     {w:120,bg:'#C6EFCE',node:valD(fmt(tI),{bold:true,color:'#375623'})},
     {w:120,bg:'#FCE4D6',node:valD(fmt(tG2),{bold:true,color:'#833C00'})},
     {w:120,bg:tR>=0?'#DAEEF3':'#FFCCCC',node:valD(fmt(tR),{bold:true,color:tR>=0?'#1F3864':'#C00000'})},
+    {w:100,bg:'#6A4C93',node:valD(fmt(tH),{bold:true,color:'white'})},
   ],'none'));
 }
 
@@ -1093,6 +1206,7 @@ function render(){
   if(vistaAnual){renderAnual();return;}
   if(vistaAhorros){renderAhorros();return;}
   if(vistaPlani){renderPlani();return;}
+  if(vistaHormiga){renderHormiga();return;}
   const mes=gM();
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
   const tT=mes.tarjetas.reduce((s,t)=>s+(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0),0);
