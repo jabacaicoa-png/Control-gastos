@@ -1116,15 +1116,45 @@ function renderHormiga(){
 
   const tbody=document.createElement('tbody');
   const ordenados=[...HORMIGAS].sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  let total=0;
+  const tdTV=document.createElement('td');
+  const recalcTotal=()=>{tdTV.textContent=fmt(HORMIGAS.reduce((s,h)=>s+(Number(h.importe)||0),0));};
+  const estiloInput='width:100%;border:none;outline:none;background:transparent;font-family:\'Roboto\',sans-serif;font-size:13px;box-sizing:border-box;';
   ordenados.forEach((h,idx)=>{
-    total+=Number(h.importe)||0;
     const tr=document.createElement('tr');
     tr.style.background=idx%2===0?'#F5F0FA':'white';
-    const [y,m,d]=h.fecha.split('-');
-    const tdF=document.createElement('td');tdF.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;white-space:nowrap;';tdF.textContent=`${d}/${m}/${y}`;
-    const tdD=document.createElement('td');tdD.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;';tdD.textContent=h.concepto;
-    const tdG=document.createElement('td');tdG.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;font-size:13px;text-align:right;font-weight:700;color:#4E3572;';tdG.textContent=fmt(h.importe);
+    const celda='border:1px solid #E0D5EE;padding:0 4px;';
+
+    // Fecha (editable)
+    const tdF=document.createElement('td');tdF.style.cssText=celda+'width:130px;';
+    const inF=document.createElement('input');inF.type='date';inF.value=h.fecha;inF.style.cssText=estiloInput+'padding:5px 4px;';
+    inF.onchange=()=>{
+      if(!inF.value){inF.value=h.fecha;return;}
+      h.fecha=inF.value;saveHormigas();dDebounce();renderHormiga();
+    };
+    tdF.appendChild(inF);
+
+    // Detalle (editable)
+    const tdD=document.createElement('td');tdD.style.cssText=celda;
+    const inD=document.createElement('input');inD.type='text';inD.value=h.concepto;inD.style.cssText=estiloInput+'padding:5px 4px;';
+    inD.onchange=()=>{
+      const v=inD.value.trim();
+      if(!v){inD.value=h.concepto;toast('⚠ El detalle no puede quedar vacío','#7F4F00');return;}
+      h.concepto=v;saveHormigas();dDebounce();
+    };
+    tdD.appendChild(inD);
+
+    // Gasto (editable)
+    const tdG=document.createElement('td');tdG.style.cssText=celda+'width:100px;';
+    const inG=document.createElement('input');inG.type='number';inG.min='0';inG.step='1';inG.value=h.importe;
+    inG.style.cssText=estiloInput+'padding:5px 4px;text-align:right;font-weight:700;color:#4E3572;';
+    inG.onchange=()=>{
+      const v=Number(inG.value)||0;
+      if(!v){inG.value=h.importe;toast('⚠ El monto no puede quedar en cero','#7F4F00');return;}
+      h.importe=v;saveHormigas();dDebounce();recalcTotal();
+    };
+    tdG.appendChild(inG);
+
+    // Eliminar
     const tdX=document.createElement('td');tdX.style.cssText='border:1px solid #E0D5EE;padding:5px 8px;text-align:center;width:26px;';
     const btnX=document.createElement('span');btnX.textContent='×';btnX.style.cssText='color:#C00000;cursor:pointer;font-weight:700;';
     btnX.onclick=()=>confirmarEliminar(`¿Eliminar "${h.concepto}" (${fmt(h.importe)})?`,()=>{HORMIGAS=HORMIGAS.filter(x=>x.id!==h.id);saveHormigas();dDebounce();renderHormiga();});
@@ -1137,7 +1167,7 @@ function renderHormiga(){
   const tfoot=document.createElement('tfoot');
   const trT=document.createElement('tr');
   const tdTL=document.createElement('td');tdTL.colSpan=2;tdTL.style.cssText='background:#4E3572;color:white;padding:6px 8px;font-weight:700;font-size:12px;';tdTL.textContent='TOTAL';
-  const tdTV=document.createElement('td');tdTV.style.cssText='background:#4E3572;color:white;padding:6px 8px;font-weight:700;text-align:right;font-size:13px;';tdTV.textContent=fmt(total);
+  tdTV.style.cssText='background:#4E3572;color:white;padding:6px 8px;font-weight:700;text-align:right;font-size:13px;';recalcTotal();
   const tdTE=document.createElement('td');tdTE.style.cssText='background:#4E3572;';
   trT.append(tdTL,tdTV,tdTE);tfoot.appendChild(trT);tbl.appendChild(tfoot);
 
