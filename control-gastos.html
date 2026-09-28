@@ -155,6 +155,27 @@ try{const h=localStorage.getItem('drive_hint');if(h)driveHint=h;}catch(e){}
 
 function fmtHora(d){if(!d)return'nunca';return d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}
 
+function cerrarMenuVistas(){document.querySelectorAll('#menu-vistas-ov,#menu-vistas').forEach(e=>e.remove());}
+function abrirMenuVistas(btn,items){
+  if(document.getElementById('menu-vistas')){cerrarMenuVistas();return;}
+  const ov=document.createElement('div');ov.id='menu-vistas-ov';ov.style.cssText='position:fixed;inset:0;z-index:9998;background:transparent;';
+  ov.onclick=cerrarMenuVistas;
+  const menu=document.createElement('div');menu.id='menu-vistas';
+  menu.style.cssText='position:fixed;z-index:9999;background:white;border:1px solid #BDBDBD;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.35);padding:6px;min-width:170px;';
+  items.forEach(it=>{
+    const row=document.createElement('div');
+    row.style.cssText=`display:flex;align-items:center;gap:10px;padding:12px 14px;margin:2px 0;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Roboto',sans-serif;border-left:6px solid ${it.color};background:${it.activa?it.color:'#F5F5F5'};color:${it.activa?'white':'#333'};`;
+    row.textContent=it.label;
+    row.onclick=()=>{cerrarMenuVistas();it.go();};
+    menu.appendChild(row);
+  });
+  document.body.append(ov,menu);
+  const r=btn.getBoundingClientRect();
+  const w=menu.offsetWidth||170;
+  menu.style.top=(r.bottom+6)+'px';
+  menu.style.left=Math.max(8,Math.min(r.left,window.innerWidth-w-8))+'px';
+}
+
 function updateDriveBar(){
   const gb=document.getElementById('drive-bar');if(!gb)return;gb.innerHTML='';
   const tw=document.createElement('div');tw.style.cssText='display:flex;flex-direction:column;gap:1px;margin-right:2px;';
@@ -177,11 +198,18 @@ function updateDriveBar(){
   const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
   const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros&&!vistaPlani&&!vistaHormiga?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;render();};
   const bH=document.createElement('button');bH.className='gbtn';bH.style.cssText='background:#6A4C93;font-size:20px;';bH.textContent='🐜';bH.title='Cargar gasto hormiga';bH.onclick=hormigaModal;
-  const vA=document.createElement('button');vA.className='gbtn';vA.style.cssText=`background:${vistaAnual?'#1F3864':'#9E9E9E'};font-size:11px;`;vA.textContent='ANUAL';vA.onclick=()=>{vistaAnual=true;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;anioAnual=anio;renderAnual();};
-  const vAh=document.createElement('button');vAh.className='gbtn';vAh.style.cssText=`background:${vistaAhorros?'#006994':'#9E9E9E'};font-size:11px;`;vAh.textContent='CALC';vAh.onclick=()=>{vistaAhorros=true;vistaAnual=false;vistaPlani=false;vistaHormiga=false;renderAhorros();};
-  const vPl=document.createElement('button');vPl.className='gbtn';vPl.style.cssText=`background:${vistaPlani?'#5C3D2E':'#9E9E9E'};font-size:11px;`;vPl.textContent='NOTAS';vPl.onclick=()=>{vistaPlani=true;vistaAhorros=false;vistaAnual=false;vistaHormiga=false;renderPlani();};
-  const vH=document.createElement('button');vH.className='gbtn';vH.style.cssText=`background:${vistaHormiga?'#6A4C93':'#9E9E9E'};font-size:11px;`;vH.textContent='HORMIGA';vH.onclick=()=>{vistaHormiga=true;vistaAnual=false;vistaAhorros=false;vistaPlani=false;renderHormiga();};
-  gb.append(ub,dl,vG,bH,vA,vAh,vPl,vH);
+  // Menú desplegable (☰) con las vistas secundarias
+  const itemsMenu=[
+    {label:'ANUAL',color:'#1F3864',activa:vistaAnual,go:()=>{vistaAnual=true;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;anioAnual=anio;renderAnual();}},
+    {label:'CALC',color:'#006994',activa:vistaAhorros,go:()=>{vistaAhorros=true;vistaAnual=false;vistaPlani=false;vistaHormiga=false;renderAhorros();}},
+    {label:'NOTAS',color:'#5C3D2E',activa:vistaPlani,go:()=>{vistaPlani=true;vistaAhorros=false;vistaAnual=false;vistaHormiga=false;renderPlani();}},
+    {label:'HORMIGA',color:'#6A4C93',activa:vistaHormiga,go:()=>{vistaHormiga=true;vistaAnual=false;vistaAhorros=false;vistaPlani=false;renderHormiga();}}
+  ];
+  const activo=itemsMenu.find(i=>i.activa);
+  const bM=document.createElement('button');bM.className='gbtn';bM.id='btn-menu-vistas';
+  bM.style.cssText=`background:${activo?activo.color:'#546E7A'};font-size:24px;`;bM.textContent='☰';bM.title=activo?`Vista: ${activo.label}`:'Más vistas';
+  bM.onclick=()=>abrirMenuVistas(bM,itemsMenu);
+  gb.append(ub,dl,vG,bH,bM);
 }
 
 function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
