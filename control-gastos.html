@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Roboto',sans-serif;font-size:13px;font-weight:700;}
 body{background:#EBEBEB;min-height:100vh;}
@@ -195,7 +196,7 @@ function updateDriveBar(){
     gb.append(tw,gs);
   }
   const ub=document.createElement('button');ub.className='gbtn';ub.style.cssText='background:#7F6000;font-size:22px;';ub.textContent='↺';ub.title='Deshacer';ub.onclick=undoLast;
-  const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ CSV';dl.onclick=dlCSV;
+  const dl=document.createElement('button');dl.className='gbtn navy';dl.textContent='⬇ XLS';dl.onclick=dlCSV;
   const vG=document.createElement('button');vG.className='gbtn';vG.style.cssText=`background:${!vistaAnual&&!vistaAhorros&&!vistaPlani&&!vistaHormiga?'#217346':'#9E9E9E'};font-size:11px;`;vG.textContent='GASTOS';vG.onclick=()=>{vistaAnual=false;vistaAhorros=false;vistaPlani=false;vistaHormiga=false;render();};
   const bH=document.createElement('button');bH.className='gbtn';bH.style.cssText='background:#6A4C93;font-size:20px;';bH.textContent='🐜';bH.title='Cargar gasto hormiga';bH.onclick=hormigaModal;
   // Menú desplegable (☰) con las vistas secundarias
@@ -295,9 +296,12 @@ function dlCSV(){
   const rows=[['CONTROL DE GASTOS - '+PL(anio,mesIdx)],[''],[`Sueldo`,mes.sueldo],...mes.extras.map(e=>[e.concepto,e.importe]),['Ingreso Total',iT],[''],
     ...mes.tarjetas.map(t=>[t.nombre,(t.gastos||[]).reduce((s,g)=>s+(Number(g.importe)||0),0)]),...mes.fijos.map(f=>[f.concepto,f.importe,f.venc,f.fpago]),
     [''],['TOTAL GASTOS',tG],['RESTO',iT-tG]];
-  const csv=rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`gastos-${MESES[mesIdx]}-${anio}.csv`;a.click();URL.revokeObjectURL(url);
+  if(typeof XLSX==='undefined'){toast('⚠ No se pudo cargar el generador de Excel (revisá la conexión a internet)','#7F4F00');return;}
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:28},{wch:16},{wch:12},{wch:12}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Gastos');
+  XLSX.writeFile(wb,`gastos-${MESES[mesIdx]}-${anio}.xlsx`);
 }
 
 let tTimer=null;
