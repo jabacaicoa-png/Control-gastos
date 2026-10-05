@@ -576,10 +576,11 @@ function mkCell(val,onChange,opts={}){
       inp.type='number';inp.value=val||'';inp.placeholder=placeholder;
       inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
       div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
-      inp.addEventListener('blur',()=>{const nv=inp.value===''?0:Number(inp.value);onChange(nv);});
+      let yaGuardado=false;
+      inp.addEventListener('blur',()=>{if(yaGuardado)return;yaGuardado=true;const nv=inp.value===''?0:Number(inp.value);onChange(nv);});
       inp.addEventListener('keydown',e=>{
-        if(e.key==='Enter'){e.preventDefault();const nv=inp.value===''?0:Number(inp.value);onChange(nv);setTimeout(()=>{const all=[...document.querySelectorAll('[data-celda]')];const cur=all.findIndex(el=>el.dataset.celda===celda);if(cur!==-1&&cur+1<all.length)all[cur+1].click();},30);}
-        if(e.key==='Escape')render();
+        if(e.key==='Enter'){e.preventDefault();inp.blur();setTimeout(()=>{const all=[...document.querySelectorAll('[data-celda]')];const cur=all.findIndex(el=>el.dataset.celda===celda);if(cur!==-1&&cur+1<all.length)all[cur+1].click();},30);}
+        if(e.key==='Escape'){yaGuardado=true;render();}
       });
     }
   });
