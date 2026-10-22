@@ -651,7 +651,7 @@ async function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
 // ===== PRÉSTAMOS =====
 // Cada préstamo es UNA entrada por mes (con el mismo id en todos los meses): {id,otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,venc,fpago}
 const PR=m=>m.prestamos||[];
-const nombrePrestamo=p=>[p.otorgante,p.descripcion].map(x=>(x||'').trim()).filter(Boolean).join(' · ')||'(SIN NOMBRE)';
+const nombrePrestamo=p=>[p.otorgante,p.descripcion].map(x=>(x||'').trim()).filter(Boolean).join(' · ').toUpperCase()||'(SIN NOMBRE)';
 const uP=(pi,f,v)=>sM(m=>{const a=[...PR(m)];a[pi]={...a[pi],[f]:v};return{...m,prestamos:a};});
 function mesMasN(a,m,n){const t=m+n;return{anio:a+Math.floor(t/12),mes:t%12};}
 function vencPrestamo(a,m,dia){
