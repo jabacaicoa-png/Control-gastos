@@ -78,7 +78,7 @@ const PL=(a,m)=>`${MESES[m]} ${a}`;
 const fmt=n=>new Intl.NumberFormat("es-AR",{maximumFractionDigits:0}).format(Number(n)||0);
 const fmtUSD=n=>new Intl.NumberFormat("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
 
-const MV=()=>({sueldo:0,extras:[],fijos:[],tarjetas:[
+const MV=()=>({sueldo:0,extras:[],fijos:[],prestamos:[],tarjetas:[
   {id:"tSAN",nombre:"VISA SANTANDER",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
   {id:"tVNA",nombre:"VISA NACIÓN",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
   {id:"tMNA",nombre:"MASTER NACIÓN",cierre:"",venc:"",fpago:"",gastos:[],gastosUSD:[]},
@@ -287,9 +287,10 @@ function dlCSV(){
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
   const tT=mes.tarjetas.reduce((s,t)=>s+(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0),0);
   const tF=mes.fijos.reduce((s,f)=>s+(Number(f.importe)||0),0);
-  const tG=tT+tF,iT=Number(mes.sueldo||0)+tE;
+  const tP=PR(mes).reduce((s,p)=>s+(Number(p.importe)||0),0);
+  const tG=tT+tF+tP,iT=Number(mes.sueldo||0)+tE;
   const rows=[['CONTROL DE GASTOS - '+PL(anio,mesIdx)],[''],[`Sueldo`,mes.sueldo],...mes.extras.map(e=>[e.concepto,e.importe]),['Ingreso Total',iT],[''],
-    ...mes.tarjetas.map(t=>[t.nombre,(t.gastos||[]).reduce((s,g)=>s+(Number(g.importe)||0),0)]),...mes.fijos.map(f=>[f.concepto,f.importe,f.venc,f.fpago]),
+    ...mes.tarjetas.map(t=>[t.nombre,(t.gastos||[]).reduce((s,g)=>s+(Number(g.importe)||0),0)]),...PR(mes).map(p=>[`${nombrePrestamo(p)} (cuota ${p.cuotaNum}/${p.cuotaTotal})`,p.importe,p.venc,p.fpago]),...mes.fijos.map(f=>[f.concepto,f.importe,f.venc,f.fpago]),
     [''],['TOTAL GASTOS',tG],['RESTO',iT-tG]];
   if(typeof XLSX==='undefined'){toast('⚠ No se pudo cargar el generador de Excel (revisá la conexión a internet)','#7F4F00');return;}
   const ws=XLSX.utils.aoa_to_sheet(rows);
@@ -505,9 +506,10 @@ function mkFecha(val,onChange,celda){
     inp.type='text';inp.value=val||'';inp.placeholder='dd/mm';
     inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
     div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
-    const commit=()=>{const r=parseFecha(inp.value);if(!r.ok&&inp.value.trim()){inp.style.background='#FFE0E0';inp.style.color='#C00000';setTimeout(()=>{val='';onChange('');refresh();},1200);return;}val=r.val;onChange(r.val);refresh();};
+    let hecho=false;
+    const commit=()=>{if(hecho)return;hecho=true;const r=parseFecha(inp.value);if(!r.ok&&inp.value.trim()){inp.style.background='#FFE0E0';inp.style.color='#C00000';setTimeout(()=>{val='';onChange('');refresh();},1200);return;}val=r.val;onChange(r.val);refresh();};
     inp.addEventListener('blur',commit);
-    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape'){div.innerHTML='';refresh();}});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape'){hecho=true;div.innerHTML='';refresh();}});
   });
   return div;
 }
@@ -646,6 +648,110 @@ async function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
 }
 
 // Elimina la tarjeta (tenga o no gastos cargados) desde este mes en adelante, sin excepciones.
+// ===== PRÉSTAMOS =====
+// Cada préstamo es UNA entrada por mes (con el mismo id en todos los meses): {id,otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,venc,fpago}
+const PR=m=>m.prestamos||[];
+const nombrePrestamo=p=>[p.otorgante,p.descripcion].map(x=>(x||'').trim()).filter(Boolean).join(' · ')||'(SIN NOMBRE)';
+const uP=(pi,f,v)=>sM(m=>{const a=[...PR(m)];a[pi]={...a[pi],[f]:v};return{...m,prestamos:a};});
+function mesMasN(a,m,n){const t=m+n;return{anio:a+Math.floor(t/12),mes:t%12};}
+function vencPrestamo(a,m,dia){
+  if(!dia)return '';
+  const ult=new Date(a,m+1,0).getDate();
+  const d=Math.min(Math.max(1,Math.round(Number(dia))||1),ult);
+  return `${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`;
+}
+function guardarMesPrestamo(a,m,d){sST(a,m,d);ST[`__ts_${a}_${m}`]=Date.now();lSave(a,m);}
+// Aplica campos descriptivos (otorgante, descripción, monto, tipo) a este préstamo en los meses siguientes
+function propagarPrestamo(id,campos,desdeMes,desdeAnio){
+  for(let i=1;i<=120;i++){
+    const p=mesMasN(desdeAnio,desdeMes,i);
+    if(!gST(p.anio,p.mes))lLoad(p.anio,p.mes);
+    const d=gST(p.anio,p.mes);if(!d)continue;
+    const idx=PR(d).findIndex(x=>x.id===id);if(idx===-1)continue;
+    d.prestamos=[...PR(d)];d.prestamos[idx]={...d.prestamos[idx],...campos};
+    guardarMesPrestamo(p.anio,p.mes,d);
+  }
+  if(driveReady)dDebounce();
+}
+const uPD=(pi,campos)=>{
+  const p=PR(gM())[pi];if(!p)return;
+  propagarPrestamo(p.id,campos,mesIdx,anio);
+  sM(m=>{const a=[...PR(m)];a[pi]={...a[pi],...campos};return{...m,prestamos:a};});
+};
+// Borra el préstamo de los meses siguientes
+function eliminarPrestamoDesdeAqui(id,desdeMes,desdeAnio){
+  for(let i=1;i<=120;i++){
+    const p=mesMasN(desdeAnio,desdeMes,i);
+    if(!gST(p.anio,p.mes))lLoad(p.anio,p.mes);
+    const d=gST(p.anio,p.mes);if(!d)continue;
+    const antes=PR(d).length;
+    d.prestamos=PR(d).filter(x=>x.id!==id);
+    if(d.prestamos.length!==antes)guardarMesPrestamo(p.anio,p.mes,d);
+  }
+  if(driveReady)dDebounce();
+}
+const delP=pi=>{
+  const p=PR(gM())[pi];if(!p)return;
+  eliminarPrestamoDesdeAqui(p.id,mesIdx,anio);
+  sM(m=>({...m,prestamos:PR(m).filter((_,j)=>j!==pi)}));
+};
+// Crea el préstamo en el mes actual y genera las cuotas restantes en los meses siguientes
+function crearPrestamo({otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,dia}){
+  const base={id:uid(),otorgante,descripcion,monto,uva,cuotaTotal};
+  for(let k=1;k<=cuotaTotal-cuotaNum;k++){
+    const p=mesMasN(anio,mesIdx,k);
+    if(!gST(p.anio,p.mes))lLoad(p.anio,p.mes);
+    const d=gST(p.anio,p.mes)??MV();
+    d.prestamos=[...PR(d),{...base,cuotaNum:cuotaNum+k,importe,venc:vencPrestamo(p.anio,p.mes,dia),fpago:''}];
+    guardarMesPrestamo(p.anio,p.mes,d);
+  }
+  sM(m=>({...m,prestamos:[...PR(m),{...base,cuotaNum,importe,venc:vencPrestamo(anio,mesIdx,dia),fpago:''}]}));
+  if(driveReady)dDebounce();
+}
+function prestamoModal(){
+  const mc=document.getElementById('modal-container');
+  const campo=(id,label,type,ph,val)=>`<div style="margin-bottom:8px;"><label style="display:block;font-size:11px;color:#888;margin-bottom:3px;">${label}</label><input id="${id}" type="${type}" ${type==='number'?'min="0" step="1"':''} placeholder="${ph||''}" value="${val||''}" style="width:100%;padding:8px;font-size:14px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #0B5345;outline:none;box-sizing:border-box;"/></div>`;
+  mc.innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box" style="max-height:92vh;overflow-y:auto;">
+        <div class="modal-title">🏦 Nuevo préstamo</div>
+        ${campo('pr-otorga','Quién otorga el préstamo','text','Ej: Supervielle')}
+        ${campo('pr-desc','Descripción','text','Ej: Prendario Nissan')}
+        ${campo('pr-monto','Monto prestado ($) — opcional','number','0')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${campo('pr-total','Cantidad de cuotas','number','36')}
+          ${campo('pr-num','Cuota N° de este mes','number','1','1')}
+        </div>
+        ${campo('pr-importe','Importe de la cuota ($)','number','0')}
+        ${campo('pr-dia','Día de vencimiento (1-31) — opcional','number','5')}
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 12px;"><input id="pr-uva" type="checkbox"/> Cuota variable (UVA)</label>
+        <div class="modal-info" style="margin-bottom:10px;">Se genera la misma cuota en los meses siguientes; después editás el importe de cada mes.</div>
+        <div class="modal-btns">
+          <button class="btn2" onclick="closeModal()">Cancelar</button>
+          <button class="btn1" id="btn-pr-save">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  const $=id=>document.getElementById(id);
+  const inOtorga=$('pr-otorga');
+  setTimeout(()=>{if(inOtorga.isConnected)inOtorga.focus();},100);
+  $('btn-pr-save').onclick=()=>{
+    const otorgante=$('pr-otorga').value.trim(),descripcion=$('pr-desc').value.trim();
+    const monto=Number($('pr-monto').value)||0,cuotaTotal=Math.round(Number($('pr-total').value)||0);
+    const cuotaNum=Math.round(Number($('pr-num').value)||1),importe=Number($('pr-importe').value)||0;
+    const dia=Math.round(Number($('pr-dia').value)||0),uva=$('pr-uva').checked;
+    const err=m=>toast('⚠ '+m,'#7F4F00');
+    if(!otorgante&&!descripcion)return err('Cargá quién otorga o una descripción');
+    if(cuotaTotal<1)return err('Poné la cantidad de cuotas');
+    if(cuotaNum<1||cuotaNum>cuotaTotal)return err(`La cuota de este mes tiene que estar entre 1 y ${cuotaTotal}`);
+    if(!(importe>0))return err('Poné el importe de la cuota');
+    if(dia&&(dia<1||dia>31))return err('El día de vencimiento va de 1 a 31');
+    closeModal();
+    crearPrestamo({otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,dia});
+    toast(`✓ Préstamo cargado (${cuotaTotal-cuotaNum+1} cuotas)`,'#0B5345');
+  };
+}
+
 async function eliminarTarjetaDesdeAqui(tarjetaId,desdeMes,desdeAnio){
   for(let i=1;i<=36;i++){
     let nm=desdeMes+i,na=desdeAnio;if(nm>11){na+=Math.floor(nm/12);nm=nm%12;}
@@ -1185,7 +1291,7 @@ function renderAnual(){
     const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
     const tT2=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
     const tF=(d.fijos||[]).reduce((s,f)=>s+(Number(f.importe)||0),0);
-    const ing=Number(d.sueldo||0)+tE;const gas=tT2+tF;const res=ing-gas;tI+=ing;tG2+=gas;
+    const ing=Number(d.sueldo||0)+tE;const tP2=(d.prestamos||[]).reduce((s,p)=>s+(Number(p.importe)||0),0);const gas=tT2+tF+tP2;const res=ing-gas;tI+=ing;tG2+=gas;
     bl.appendChild(mkRow([
       {w:110,bg:rbg,node:lbl(mes,{bold:true})},
       {w:60,bg:rbg,node:aumNode},
@@ -1213,11 +1319,13 @@ function render(){
   const tE=mes.extras.reduce((s,e)=>s+(Number(e.importe)||0),0);
   const tT=mes.tarjetas.reduce((s,t)=>s+(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0),0);
   const tF=mes.fijos.reduce((s,f)=>s+(Number(f.importe)||0),0);
-  const tG=tT+tF,sueldo=Number(mes.sueldo)||0,iT=sueldo+tE,resto=iT-tG;
+  const tP=PR(mes).reduce((s,p)=>s+(Number(p.importe)||0),0);
+  const tG=tT+tF+tP,sueldo=Number(mes.sueldo)||0,iT=sueldo+tE,resto=iT-tG;
   const pct=iT>0?tG/iT*100:0,bc=pct>95?'#C00000':pct>80?'#E67E22':'#217346';
   const tTPagado=mes.tarjetas.reduce((s,t)=>s+(t.fpago?(t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0):0),0);
   const tFPagado=mes.fijos.reduce((s,f)=>s+(f.fpago?(Number(f.importe)||0):0),0);
-  const pagado=tTPagado+tFPagado,pendiente=tG-pagado;
+  const tPPagado=PR(mes).reduce((s,p)=>s+(p.fpago?(Number(p.importe)||0):0),0);
+  const pagado=tTPagado+tFPagado+tPPagado,pendiente=tG-pagado;
   const pctPag=tG>0?pagado/tG*100:0;
 
   const app=document.getElementById('app');app.innerHTML='';
@@ -1268,7 +1376,7 @@ function render(){
   const tbl=E('div','block');cnt.appendChild(tbl);
 
   // GASTOS
-  tbl.appendChild(secHd('▸  GASTOS','#D9E1F2','#1F3864',tF+tT));
+  tbl.appendChild(secHd('▸  GASTOS','#D9E1F2','#1F3864',tF+tT+tP));
   tbl.appendChild(mkRow([{w:24,bg:'#B4C6E7',node:E('div')},{w:160,bg:'#B4C6E7',node:thN('Concepto')},{w:90,bg:'#B4C6E7',node:thN('Importe')},{w:58,bg:'#B4C6E7',node:thN('Venc.','center')},{w:58,bg:'#B4C6E7',node:thN('F.Pago','center')},{w:26,bg:'#B4C6E7',node:E('div')},{w:26,bg:'#B4C6E7',node:E('div')}],'2px solid #9E9E9E'));
 
   mes.tarjetas.forEach((t,ti)=>{
@@ -1293,6 +1401,19 @@ function render(){
         {w:26,bg:'#EEF6FF',node:E('div')},{w:26,bg:'#EEF6FF',node:E('div')},
       ],'1px solid #BBDEFB'));
     }
+  });
+
+  PR(mes).forEach((p,pi)=>{
+    const bgp=Number(p.cuotaNum)===Number(p.cuotaTotal)?'#FFE0B2':'#EAF7F3';
+    const vNodeP=mkFecha(p.venc,v=>uP(pi,'venc',v),`pg${pi}v`);if(p.venc&&!p.fpago)vNodeP.classList.add('vr');
+    tbl.appendChild(mkRow([
+      {w:24,bg:bgp,node:E('div')},
+      {w:160,bg:bgp,node:(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#0B5345;font-weight:700;cursor:default;';d.textContent=nombrePrestamo(p);return d;})()},
+      {w:90,bg:bgp,node:valD(fmt(p.importe),{bold:true,color:'#0B5345'})},
+      {w:58,bg:bgp,node:vNodeP},
+      {w:58,bg:bgp,node:mkFecha(p.fpago,v=>uP(pi,'fpago',v),`pg${pi}p`)},
+      {w:26,bg:bgp,node:E('div')},{w:26,bg:bgp,node:E('div')},
+    ]));
   });
 
   mes.fijos.forEach((f,i)=>{
@@ -1495,6 +1616,40 @@ function render(){
     }
   });
   tbl.appendChild(addB('+ Agregar tarjeta','#833C00','#FFF5EE',()=>sM(m=>({...m,tarjetas:[...m.tarjetas,{id:uid(),nombre:'',cierre:'',venc:'',fpago:'',gastos:[]}]}))));
+
+  // PRÉSTAMOS
+  tbl.appendChild(secHd('▸  PRÉSTAMOS','#D5EFE9','#0B5345',tP));
+  tbl.appendChild(mkRow([{w:24,bg:'#A9DFD0',node:E('div')},{w:160,bg:'#A9DFD0',node:thN('Préstamo')},{w:58,bg:'#A9DFD0',node:thN('Cuota','center')},{w:90,bg:'#A9DFD0',node:thN('Importe')},{w:58,bg:'#A9DFD0',node:thN('Venc.','center')},{w:58,bg:'#A9DFD0',node:thN('F.Pago','center')},{w:26,bg:'#A9DFD0',node:E('div')}],'2px solid #9E9E9E'));
+  if(!PR(mes).length){
+    tbl.appendChild(mkRow([{w:24,node:E('div')},{grow:true,node:(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#CCC;cursor:default;';d.textContent='Sin préstamos cargados';return d;})()}]));
+  }
+  PR(mes).forEach((p,pi)=>{
+    const ult=Number(p.cuotaNum)===Number(p.cuotaTotal);
+    const bgp=ult?'#FFE0B2':'#EAF7F3';
+    const key='p_'+p.id,exp=TExp[key]===true;
+    const tog=E('div','tg-tog');tog.textContent=exp?'▾':'▸';tog.onclick=()=>{TExp[key]=!exp;render();};
+    const vP=mkFecha(p.venc,v=>uP(pi,'venc',v),`p${pi}v`);if(p.venc&&!p.fpago)vP.classList.add('vr');
+    const nombre=nombrePrestamo(p);
+    tbl.appendChild(mkRow([
+      {w:24,bg:bgp,node:tog},
+      {w:160,bg:bgp,node:(()=>{const d=E('div','cv');d.style.cssText='font-weight:700;color:#0B5345;cursor:default;';d.textContent=nombre+(p.uva?' · UVA':'');return d;})()},
+      {w:58,bg:bgp,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;font-weight:700;cursor:default;color:${ult?'#B45309':'#0B5345'};`;d.textContent=`${p.cuotaNum}/${p.cuotaTotal}`;return d;})()},
+      {w:90,bg:bgp,node:mkCell(p.importe,v=>uP(pi,'importe',Number(v)||0),{type:'number',bold:true,color:'#0B5345',celda:`p${pi}i`})},
+      {w:58,bg:bgp,node:vP},
+      {w:58,bg:bgp,node:mkFecha(p.fpago,v=>uP(pi,'fpago',v),`p${pi}p`)},
+      {w:26,bg:bgp,node:delB(()=>confirmarEliminar(`¿Eliminar el préstamo "${nombre}"? Se borra de este mes en adelante.`,()=>delP(pi)))},
+    ],'1px solid #C0C0C0'));
+    if(exp){
+      const det=(label,node)=>mkRow([{w:24,bg:'#F4FBF8',node:E('div')},{w:96,bg:'#F4FBF8',node:(()=>{const d=E('div','cv');d.style.cssText='font-size:12px;color:#555;cursor:default;';d.textContent=label;return d;})()},{grow:true,bg:'#F4FBF8',node}],'1px solid #D5EFE9');
+      tbl.appendChild(det('Otorga',mkCell(p.otorgante,v=>uPD(pi,{otorgante:v}),{placeholder:'Quién otorga',celda:`p${pi}o`})));
+      tbl.appendChild(det('Descripción',mkCell(p.descripcion,v=>uPD(pi,{descripcion:v}),{placeholder:'Descripción',celda:`p${pi}d`})));
+      tbl.appendChild(det('Monto prestado',mkCell(p.monto,v=>uPD(pi,{monto:Number(v)||0}),{type:'number',celda:`p${pi}m`})));
+      tbl.appendChild(det('Cuotas',(()=>{const d=E('div','cv');d.style.cssText='cursor:default;';d.textContent=`${p.cuotaTotal} cuotas`;return d;})()));
+      tbl.appendChild(det('Tipo',(()=>{const d=E('div','cv');d.style.cssText='cursor:pointer;color:#0B5345;font-weight:700;';d.textContent=p.uva?'UVA (cuota variable) · tocar para cambiar':'Cuota fija · tocar para cambiar';d.onclick=()=>uPD(pi,{uva:!p.uva});return d;})()));
+      tbl.appendChild(mkRow([{w:24,bg:'#F4FBF8',node:E('div')},{grow:true,bg:'#F4FBF8',node:(()=>{const d=E('div');d.style.cssText='padding:3px 8px;font-size:10px;color:#999;';d.textContent='Otorga, descripción, monto y tipo se aplican a este mes y los siguientes. El importe, venc. y F.Pago son de cada mes.';return d;})()}],'1px solid #D5EFE9'));
+    }
+  });
+  tbl.appendChild(addB('+ Agregar préstamo','#0B5345','#EAF7F3',prestamoModal));
 }
 
 lLoad(anio,mesIdx);
