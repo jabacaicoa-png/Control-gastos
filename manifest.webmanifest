@@ -1,0 +1,17 @@
+{
+  "name": "Control de Gastos",
+  "short_name": "Gastos",
+  "description": "Control de gastos mensuales, tarjetas y préstamos",
+  "lang": "es-AR",
+  "start_url": "./control-gastos.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EBEBEB",
+  "theme_color": "#217346",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
