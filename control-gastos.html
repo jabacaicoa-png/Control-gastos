@@ -414,14 +414,27 @@ function initGA(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{
     window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,login_hint:driveHint||undefined,
-      callback:(r)=>{if(r.access_token){accessToken=r.access_token;tokenExp=Date.now()+(Number(r.expires_in)||3600)*1000;driveReady=true;
-        if(!driveHint){fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{'Authorization':'Bearer '+r.access_token}}).then(res=>res.json()).then(info=>{if(info.email){driveHint=info.email;try{localStorage.setItem('drive_hint',info.email);}catch(e){}}}).catch(()=>{});}
-        updateDriveBar();sync();}}});
+      callback:(r)=>{
+        if(!r||!r.access_token){pedirCuenta=true;toast('⚠ No se completó la conexión con Google Drive.\nTocá SYNC para intentar de nuevo.','#7F4F00');return;}
+        pedirCuenta=false;
+        accessToken=r.access_token;tokenExp=Date.now()+(Number(r.expires_in)||3600)*1000;driveReady=true;
+        // Recordar la cuenta (se lee desde Drive, que sí lo permite con este permiso) para no pedir elegirla cada vez
+        if(!driveHint){fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',{headers:{'Authorization':'Bearer '+r.access_token}}).then(res=>res.ok?res.json():null).then(info=>{const em=info&&info.user&&info.user.emailAddress;if(em){driveHint=em;try{localStorage.setItem('drive_hint',em);}catch(e){}}}).catch(()=>{});}
+        updateDriveBar();sync();},
+      error_callback:()=>{pedirCuenta=true;}
+    });
     mostrarModalSync();
   };
   document.head.appendChild(s);
 }
-function cDrive(){if(window.tC)window.tC.requestAccessToken();else toast('⚠ No se pudo conectar con Google (¿sin internet?)','#7F4F00');}
+// Con la cuenta ya recordada, Google conecta sola sin mostrar la lista de cuentas
+// (la ventanita se abre y se cierra sola). Si algo falla, el próximo intento muestra la lista.
+let pedirCuenta=false;
+function cDrive(){
+  if(!window.tC){toast('⚠ No se pudo conectar con Google (¿sin internet?)','#7F4F00');return;}
+  if(driveHint&&!pedirCuenta)window.tC.requestAccessToken({prompt:'',login_hint:driveHint});
+  else window.tC.requestAccessToken({prompt:'select_account'});
+}
 // Al volver a la app, trae los cambios hechos desde otro dispositivo
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&driveReady&&tokenValido()&&(!lastSync||Date.now()-lastSync>60000))sync();
