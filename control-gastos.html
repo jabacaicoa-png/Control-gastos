@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#217346"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Gastos"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
 <title>Control de Gastos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,37 +92,60 @@ const MV=()=>({sueldo:0,extras:[],fijos:[],prestamos:[],tarjetas:[
 ]});
 
 const ST={};let vistaAnual=false,anioAnual=new Date().getFullYear(),vistaAhorros=false,vistaPlani=false,vistaTarjetas=false;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lsGet=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+
+// ===== Control de cambios para la sincronización =====
+// TS: hora del último cambio de cada mes ("2026_10": 1731...). Se guarda en el dispositivo
+// para que, al sincronizar, gane siempre la versión más nueva (la de Drive o la local).
+// META: lo mismo para las secciones globales (fijos, verificados, débitos, aumentos, notas, calculadora).
+let TS=lsGet('gastos_ts',{}),META=lsGet('gastos_meta_ts',{});
+let PEND=localStorage.getItem('sync_pendiente')==='1',editGen=0;
+function marcarPendiente(){PEND=true;editGen++;try{localStorage.setItem('sync_pendiente','1');}catch(e){}dDebounce();}
+function stampSec(sec){META[sec]=Date.now();lsSet('gastos_meta_ts',META);marcarPendiente();}
+// Claves del backup que esta versión no usa (ej. datos de versiones anteriores): se conservan tal cual.
+let EXTRA=lsGet('drive_extra',{});
+
 let PLANI={cols:['A','B','C','D'],rows:[['','','','']]};
-try{const p=localStorage.getItem('planilla_data');if(p)PLANI=JSON.parse(p);}catch(e){}
-function savePlani(){try{localStorage.setItem('planilla_data',JSON.stringify(PLANI));}catch(e){}}
-let AHORROS=[];
-try{const a=localStorage.getItem('ahorros_data');if(a)AHORROS=JSON.parse(a);}catch(e){}
-function saveAhorros(){try{localStorage.setItem('ahorros_data',JSON.stringify(AHORROS));}catch(e){}}
-let FIJOS={};
-try{const f=localStorage.getItem('fijos_globales');if(f)FIJOS=JSON.parse(f);}catch(e){}
-function saveFijos(){try{localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
-function toggleFijo(id){FIJOS[id]=!FIJOS[id];if(!FIJOS[id])delete FIJOS[id];saveFijos();render();}
+PLANI=lsGet('planilla_data',PLANI);
+function savePlani(){lsSet('planilla_data',PLANI);stampSec('__plani');}
+let AHORROS=lsGet('ahorros_data',[]);
+function saveAhorros(){lsSet('ahorros_data',AHORROS);stampSec('__ahorros');}
+let FIJOS=lsGet('fijos_globales',{});
+function saveFijos(){lsSet('fijos_globales',FIJOS);stampSec('__fijos');}
+function toggleFijo(id){pushHistory();FIJOS[id]=!FIJOS[id];if(!FIJOS[id])delete FIJOS[id];saveFijos();render();}
 function esFijo(id){return!!FIJOS[id];}
 
 // Verificados: gastos marcados como controlados contra resumen tarjeta
-let VERIF={};
-try{const v=localStorage.getItem('verificados');if(v)VERIF=JSON.parse(v);}catch(e){}
-function saveVerif(){try{localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
-function toggleVerif(id){VERIF[id]=!VERIF[id];if(!VERIF[id])delete VERIF[id];saveVerif();render();}
+let VERIF=lsGet('verificados',{});
+function saveVerif(){lsSet('verificados',VERIF);stampSec('__verif');}
+function toggleVerif(id){pushHistory();VERIF[id]=!VERIF[id];if(!VERIF[id])delete VERIF[id];saveVerif();render();}
 function esVerif(id){return!!VERIF[id];}
 
 // Débitos automáticos
-let DEBITOS={};
-try{const d=localStorage.getItem('debitos_auto');if(d)DEBITOS=JSON.parse(d);}catch(e){}
-function saveDebitos(){try{localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
-function toggleDebito(id){DEBITOS[id]=!DEBITOS[id];if(!DEBITOS[id])delete DEBITOS[id];saveDebitos();render();}
+let DEBITOS=lsGet('debitos_auto',{});
+function saveDebitos(){lsSet('debitos_auto',DEBITOS);stampSec('__debitos');}
+function toggleDebito(id){pushHistory();DEBITOS[id]=!DEBITOS[id];if(!DEBITOS[id])delete DEBITOS[id];saveDebitos();render();}
 function esDebito(id){return!!DEBITOS[id];}
 
-
-const HISTORY=[];
-function pushHistory(){try{const snap=JSON.stringify(ST[`${anio}_${mesIdx}`]??MV());HISTORY.push({anio,mesIdx,data:snap});if(HISTORY.length>10)HISTORY.shift();}catch(e){}}
+// ===== Deshacer =====
+// Cada paso guarda TODOS los meses y las marcas globales, así se pueden deshacer también
+// las operaciones que tocan varios meses (cuotas, préstamos, eliminar tarjeta).
+const HISTORY=[];let _histLock=0;
+const esMes=k=>/^\d{4}_\d{1,2}$/.test(k);
+const monthKeys=()=>Object.keys(ST).filter(esMes);
+function pushHistory(){
+  if(_histLock)return;
+  try{const months={};monthKeys().forEach(k=>{months[k]=ST[k];});
+    HISTORY.push(JSON.stringify({months,f:FIJOS,v:VERIF,d:DEBITOS,a:AUMENTOS}));
+    if(HISTORY.length>15)HISTORY.shift();}catch(e){}
+}
+// Ejecuta una operación como un único paso de "deshacer"
+function op(fn){pushHistory();_histLock++;try{return fn();}finally{_histLock--;}}
 const PLANI_HISTORY=[];
 function pushPlaniHistory(){try{PLANI_HISTORY.push(JSON.stringify(PLANI));if(PLANI_HISTORY.length>10)PLANI_HISTORY.shift();}catch(e){}}
+function reemplazar(obj,nuevo){Object.keys(obj).forEach(k=>delete obj[k]);Object.assign(obj,nuevo||{});}
 function undoLast(){
   if(vistaPlani){
     if(!PLANI_HISTORY.length){toast('⚠ No hay cambios para deshacer','#7F4F00');return;}
@@ -125,26 +154,68 @@ function undoLast(){
     return;
   }
   if(!HISTORY.length){toast('⚠ No hay cambios para deshacer','#7F4F00');return;}
-  const last=HISTORY.pop();
-  try{const d=JSON.parse(last.data);sST(last.anio,last.mesIdx,d);lSave(last.anio,last.mesIdx);dDebounce();render();toast('✓ Cambio deshecho','#217346');}
-  catch(e){toast('⚠ Error al deshacer','#7F4F00');}
+  try{
+    const s=JSON.parse(HISTORY.pop());
+    new Set([...monthKeys(),...Object.keys(s.months)]).forEach(k=>{
+      const antes=s.months[k]??null;
+      if(JSON.stringify(ST[k]??null)!==JSON.stringify(antes)){const[a,m]=k.split('_');ST[k]=antes;lSave(a,m);}
+    });
+    if(JSON.stringify(FIJOS)!==JSON.stringify(s.f)){reemplazar(FIJOS,s.f);saveFijos();}
+    if(JSON.stringify(VERIF)!==JSON.stringify(s.v)){reemplazar(VERIF,s.v);saveVerif();}
+    if(JSON.stringify(DEBITOS)!==JSON.stringify(s.d)){reemplazar(DEBITOS,s.d);saveDebitos();}
+    if(JSON.stringify(AUMENTOS)!==JSON.stringify(s.a)){reemplazar(AUMENTOS,s.a);lsSet('aumentos_sueldo',AUMENTOS);stampSec('__aumentos');}
+    render();toast('✓ Cambio deshecho','#217346');
+  }catch(e){toast('⚠ Error al deshacer','#7F4F00');}
 }
 
-let _lp={anio:2026,mes:new Date().getMonth()};
-let AUMENTOS={};
-try{const a=localStorage.getItem('aumentos_sueldo');if(a)AUMENTOS=JSON.parse(a);}catch(e){}
-function saveAumento(a,m,pct){AUMENTOS[`${a}_${m}`]=pct;try{localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
+let _lp={anio:new Date().getFullYear(),mes:new Date().getMonth()};
+let AUMENTOS=lsGet('aumentos_sueldo',{});
+function saveAumento(a,m,pct){AUMENTOS[`${a}_${m}`]=pct;lsSet('aumentos_sueldo',AUMENTOS);stampSec('__aumentos');}
 function getAumento(a,m){return AUMENTOS[`${a}_${m}`]||0;}
 try{const lp=localStorage.getItem('lastPeriod');if(lp){const p=JSON.parse(lp);_lp=p;}}catch(e){}
-let anio=_lp.anio,mesIdx=_lp.mes,driveFileId=null,driveReady=false,accessToken=null,TExp={};
+let anio=_lp.anio,mesIdx=_lp.mes,driveFileId=null,driveReady=false,accessToken=null,tokenExp=0,TExp={};
 const gST=(a,m)=>ST[`${a}_${m}`]??null;
 const sST=(a,m,d)=>{ST[`${a}_${m}`]=d;};
-const gM=()=>gST(anio,mesIdx)??MV();
-function sM(fn){pushHistory();const c=gM(),n=typeof fn==="function"?fn(c):fn;sST(anio,mesIdx,n);ST[`__ts_${anio}_${mesIdx}`]=Date.now();lSave(anio,mesIdx);dDebounce();render();}
+// Mes nuevo: toma las tarjetas del último mes cargado (sin gastos), así no reaparecen tarjetas eliminadas
+function nuevoMes(a,m){
+  for(let i=1;i<=24;i++){
+    let mm=m-i,aa=a;while(mm<0){mm+=12;aa--;}
+    const d=gST(aa,mm);
+    if(d&&Array.isArray(d.tarjetas)&&d.tarjetas.length){
+      const base=MV();base.tarjetas=d.tarjetas.map(t=>({id:t.id,nombre:t.nombre,cierre:'',venc:'',fpago:'',gastos:[],gastosUSD:[]}));return base;
+    }
+  }
+  return MV();
+}
+const gM=()=>gST(anio,mesIdx)??nuevoMes(anio,mesIdx);
+function sM(fn){pushHistory();const c=gM(),n=typeof fn==="function"?fn(c):fn;sST(anio,mesIdx,n);lSave(anio,mesIdx);render();}
+// Un mes "vacío" (sin ningún dato cargado) se muestra como sin datos en los resúmenes
+function mesVacio(d){
+  if(!d)return true;
+  if(Number(d.sueldo)||Number(d.sueldoBruto)||(d.extras||[]).length||(d.fijos||[]).length||(d.prestamos||[]).length)return false;
+  return(d.tarjetas||[]).every(t=>!(t.gastos||[]).length&&!(t.gastosUSD||[]).length&&!t.venc&&!t.fpago&&!t.cierre);
+}
 
 const lKey=(a,m)=>`gastos_${VER}_${a}_${m}`;
-function lSave(a,m){const d=ST[`${a}_${m}`];if(d)try{localStorage.setItem(lKey(a,m),JSON.stringify(d));}catch(e){}}
+// tsDrive: si viene de Drive se guarda esa hora; si no, es un cambio local (queda pendiente de subir)
+function lSave(a,m,tsDrive){
+  const k=`${a}_${m}`;
+  try{localStorage.setItem(lKey(a,m),JSON.stringify(ST[k]??null));}catch(e){}
+  if(tsDrive===undefined){TS[k]=Date.now();lsSet('gastos_ts',TS);marcarPendiente();}
+  else{if(tsDrive)TS[k]=tsDrive;else delete TS[k];lsSet('gastos_ts',TS);}
+}
 function lLoad(a,m){try{const r=localStorage.getItem(lKey(a,m));if(r){const d=JSON.parse(r);sST(a,m,d);return d;}}catch(e){}return null;}
+// Carga todos los meses guardados en el dispositivo (y limpia claves basura de versiones anteriores)
+function lLoadAll(){
+  const pre=`gastos_${VER}_`,basura=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);if(!k||!k.startsWith(pre))continue;
+    const resto=k.slice(pre.length);
+    if(!esMes(resto)){basura.push(k);continue;}
+    try{ST[resto]=JSON.parse(localStorage.getItem(k));}catch(e){}
+  }
+  basura.forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+}
 
 let dTimer=null,lastSync=null,driveHint='';
 try{const ls=localStorage.getItem('lastSync_v15');if(ls)lastSync=new Date(ls);}catch(e){}
@@ -179,15 +250,23 @@ function updateDriveBar(){
   const tt=document.createElement('span');tt.style.cssText='font-size:9px;font-weight:700;color:#217346;white-space:nowrap;letter-spacing:.5px;';tt.textContent='📊 CONTROL DE GASTOS';
   tw.appendChild(tt);
   const statusRow=document.createElement('div');statusRow.style.cssText='display:flex;align-items:center;gap:6px;';
+  const span=(txt,color)=>{const s=document.createElement('span');s.style.cssText=`color:${color};font-size:11px;white-space:nowrap;`;s.textContent=txt;return s;};
   if(!driveReady){
-    const info=document.createElement('span');info.style.cssText='color:#555;font-size:11px;white-space:nowrap;';info.textContent='💾 Datos locales';
-    statusRow.appendChild(info);tw.appendChild(statusRow);
+    statusRow.appendChild(span('💾 Datos locales','#555'));tw.appendChild(statusRow);
     const cb=document.createElement('button');cb.className='gbtn blue';cb.textContent='SYNC';cb.onclick=cDrive;
     gb.append(tw,cb);
+  }else if(!tokenValido()){
+    // La sesión de Google venció: los cambios quedan en el dispositivo hasta reconectar
+    statusRow.appendChild(span('⚠ Reconectar Drive','#C00000'));
+    if(PEND)statusRow.appendChild(span('● sin subir','#B45309'));
+    tw.appendChild(statusRow);
+    const rb=document.createElement('button');rb.className='gbtn';rb.style.background='#C55A11';rb.textContent='SYNC';rb.title='La sesión de Drive venció: tocá para reconectar';rb.onclick=cDrive;
+    gb.append(tw,rb);
   }else{
-    const info=document.createElement('span');info.style.cssText='color:#375623;font-size:11px;white-space:nowrap;';info.textContent='✓ Drive';
-    const si=document.createElement('span');si.className='sync-time-anchor';si.style.cssText='color:#666;font-size:11px;white-space:nowrap;';si.textContent='Sync: '+fmtHora(lastSync);
-    statusRow.append(info,si);tw.appendChild(statusRow);
+    const si=span(syncing?'Sincronizando…':'Sync: '+fmtHora(lastSync),'#666');si.className='sync-time-anchor';
+    statusRow.append(span('✓ Drive','#375623'),si);
+    if(PEND&&!syncing)statusRow.appendChild(span('● sin subir','#B45309'));
+    tw.appendChild(statusRow);
     const gs=document.createElement('button');gs.className='gbtn green';gs.textContent='SYNC';gs.onclick=dSaveAll;
     gb.append(tw,gs);
   }
@@ -200,7 +279,8 @@ function updateDriveBar(){
     {label:'ANUAL',color:'#1F3864',activa:vistaAnual,go:()=>{resetV();vistaAnual=true;anioAnual=anio;renderAnual();}},
     {label:'TARJETAS',color:'#833C00',activa:vistaTarjetas,go:()=>{resetV();vistaTarjetas=true;anioAnual=anio;renderTarjetas();}},
     {label:'CALC',color:'#006994',activa:vistaAhorros,go:()=>{resetV();vistaAhorros=true;renderAhorros();}},
-    {label:'NOTAS',color:'#5C3D2E',activa:vistaPlani,go:()=>{resetV();vistaPlani=true;renderPlani();}}
+    {label:'NOTAS',color:'#5C3D2E',activa:vistaPlani,go:()=>{resetV();vistaPlani=true;renderPlani();}},
+    {label:'💾 BACKUP',color:'#37474F',activa:false,go:backupModal}
   ];
   const activo=itemsMenu.find(i=>i.activa);
   const bM=document.createElement('button');bM.className='gbtn';bM.id='btn-menu-vistas';
@@ -209,64 +289,188 @@ function updateDriveBar(){
   gb.append(ub,dl,vG,bM);
 }
 
-function dDebounce(){if(!driveReady)return;clearTimeout(dTimer);dTimer=setTimeout(dSaveAll,3000);}
+// ===== Sincronización con Google Drive =====
+// Cada sincronización: 1) baja el archivo de Drive, 2) combina mes por mes quedándose con la
+// versión más nueva (Drive o dispositivo), 3) sube el resultado. Así no se pisan los cambios
+// entre dispositivos ni se pierden los cambios hechos sin conexión.
+let syncing=false,syncOtraVez=false,avisoVencido=false;
+const tokenValido=()=>!!accessToken&&Date.now()<tokenExp-60000;
+function dDebounce(){
+  if(!driveReady)return;
+  if(!tokenValido()){updateDriveBar();return;}
+  clearTimeout(dTimer);dTimer=setTimeout(()=>sync(),3000);
+}
+function dSaveAll(){sync({manual:true});}
 
-async function dSaveAll(){
-  if(!driveReady||!accessToken)return;
-  const calcD=JSON.parse(localStorage.getItem('calc_diario')||'{}');
-  const calcU=JSON.parse(localStorage.getItem('calc_uva')||'{}');
-  const backup={...ST, __fijos:FIJOS, __verif:VERIF, __debitos:DEBITOS, __aumentos:AUMENTOS, __ahorros:AHORROS, __calcD:calcD, __calcU:calcU, __plani:PLANI};
-  const body=JSON.stringify(backup);
-  try{
-    if(driveFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});}
-    else{
-      const meta=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({name:FNAME,mimeType:'application/json'})}).then(r=>r.json());
-      driveFileId=meta.id;
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body});
-    }
-    lastSync=new Date();try{localStorage.setItem('lastSync_v15',lastSync.toISOString());}catch(e){}
-    updateDriveBar();pulseSyncIcon();
-  }catch(e){toast('⚠ Error al guardar en Drive','#7F4F00');}
+async function gFetch(url,opts={}){
+  const r=await fetch(url,{...opts,headers:{...(opts.headers||{}),'Authorization':'Bearer '+accessToken}});
+  if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;throw e;}
+  return r;
+}
+// Si hay varios archivos con el mismo nombre, usa siempre el modificado más recientemente
+async function buscarArchivo(){
+  const q=encodeURIComponent(`name='${FNAME}' and trashed=false`);
+  const r=await gFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime%20desc&fields=files(id,modifiedTime)&pageSize=10`).then(r=>r.json());
+  return(r.files&&r.files[0])||null;
 }
 
-async function dLoad(){
-  if(!accessToken)return;
+// JSON con las claves ordenadas, para comparar sin importar el orden
+const ordenar=o=>Array.isArray(o)?o.map(ordenar):(o&&typeof o==='object')?Object.keys(o).sort().reduce((r,k)=>{r[k]=ordenar(o[k]);return r;},{}):o;
+const canon=o=>JSON.stringify(ordenar(o));
+function armarBackup(){
+  const b={...EXTRA};
+  monthKeys().forEach(k=>{b[k]=ST[k]??null;if(TS[k])b[`__ts_${k}`]=TS[k];});
+  b.__fijos=FIJOS;b.__verif=VERIF;b.__debitos=DEBITOS;b.__aumentos=AUMENTOS;b.__ahorros=AHORROS;
+  b.__calcD=lsGet('calc_diario',{});b.__calcU=lsGet('calc_uva',{});b.__plani=PLANI;
+  if(Object.keys(META).length)b.__metats={...META};
+  return b;
+}
+
+// Secciones globales: [leer, aplicar (sin marcar como cambio local)]
+const SECC={
+  __fijos:[()=>FIJOS,v=>{reemplazar(FIJOS,v);lsSet('fijos_globales',FIJOS);}],
+  __verif:[()=>VERIF,v=>{reemplazar(VERIF,v);lsSet('verificados',VERIF);}],
+  __debitos:[()=>DEBITOS,v=>{reemplazar(DEBITOS,v);lsSet('debitos_auto',DEBITOS);}],
+  __aumentos:[()=>AUMENTOS,v=>{reemplazar(AUMENTOS,v);lsSet('aumentos_sueldo',AUMENTOS);}],
+  __ahorros:[()=>AHORROS,v=>{AHORROS.length=0;(Array.isArray(v)?v:[]).forEach(a=>AHORROS.push(a));lsSet('ahorros_data',AHORROS);}],
+  __calcD:[()=>lsGet('calc_diario',{}),v=>lsSet('calc_diario',v)],
+  __calcU:[()=>lsGet('calc_uva',{}),v=>lsSet('calc_uva',v)],
+  __plani:[()=>PLANI,v=>{reemplazar(PLANI,v);lsSet('planilla_data',PLANI);}],
+};
+const SECC_UNION=new Set(['__fijos','__verif','__debitos','__aumentos']);
+
+// Combina el contenido de Drive con lo local. Devuelve true si cambió algo local.
+function combinarConDrive(dd){
+  let cambio=false;
+  const dMeta=dd.__metats||{};
+  // Meses
+  new Set([...Object.keys(dd).filter(esMes),...monthKeys()]).forEach(k=>{
+    if(!(k in dd))return; // sólo existe en el dispositivo: se sube
+    const dt=Number(dd[`__ts_${k}`])||0,lt=TS[k]||0;
+    if(dt>lt||(!dt&&!lt)||!(k in ST)){
+      if(JSON.stringify(ST[k]??null)!==JSON.stringify(dd[k]??null)){ST[k]=dd[k]??null;cambio=true;}
+      const[a,m]=k.split('_');lSave(a,m,dt);
+    }
+  });
+  // Secciones globales
+  Object.entries(SECC).forEach(([sec,[leer,aplicar]])=>{
+    if(dd[sec]===undefined)return;
+    const dt=Number(dMeta[sec])||0,lt=META[sec]||0;
+    let nuevo=null;
+    if(dt>lt)nuevo=dd[sec];
+    else if(!dt&&!lt)nuevo=SECC_UNION.has(sec)?{...leer(),...dd[sec]}:dd[sec]; // archivo de la versión anterior
+    if(nuevo!==null){
+      if(JSON.stringify(leer())!==JSON.stringify(nuevo)){aplicar(nuevo);cambio=true;}
+      if(dt){META[sec]=dt;}
+    }
+  });
+  lsSet('gastos_meta_ts',META);
+  // Claves que esta versión no conoce: se conservan
+  const extra={};
+  Object.keys(dd).forEach(k=>{if(!esMes(k)&&!k.startsWith('__ts_')&&!SECC[k]&&k!=='__metats')extra[k]=dd[k];});
+  EXTRA=extra;lsSet('drive_extra',EXTRA);
+  return cambio;
+}
+
+async function sync({manual=false}={}){
+  if(!driveReady)return;
+  if(!tokenValido()){updateDriveBar();if(manual)cDrive();return;}
+  if(syncing){syncOtraVez=true;return;}
+  syncing=true;clearTimeout(dTimer);updateDriveBar();
+  const gen=editGen;
   try{
-    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FNAME}'&spaces=drive&fields=files(id,name)`,{headers:{'Authorization':'Bearer '+accessToken}}).then(r=>r.json());
-    if(r.files&&r.files.length>0){
-      driveFileId=r.files[0].id;
-      const dd=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{'Authorization':'Bearer '+accessToken}}).then(r=>r.json());
-      // Restaurar marcadores globales desde Drive
-      if(dd.__fijos){try{Object.assign(FIJOS,dd.__fijos);localStorage.setItem('fijos_globales',JSON.stringify(FIJOS));}catch(e){}}
-      if(dd.__verif){try{Object.assign(VERIF,dd.__verif);localStorage.setItem('verificados',JSON.stringify(VERIF));}catch(e){}}
-      if(dd.__debitos){try{Object.assign(DEBITOS,dd.__debitos);localStorage.setItem('debitos_auto',JSON.stringify(DEBITOS));}catch(e){}}
-      if(dd.__aumentos){try{Object.assign(AUMENTOS,dd.__aumentos);localStorage.setItem('aumentos_sueldo',JSON.stringify(AUMENTOS));}catch(e){}}
-      if(dd.__ahorros){try{AHORROS.length=0;dd.__ahorros.forEach(a=>AHORROS.push(a));localStorage.setItem('ahorros_data',JSON.stringify(AHORROS));}catch(e){}}
-      if(dd.__calcD){try{localStorage.setItem('calc_diario',JSON.stringify(dd.__calcD));}catch(e){}}
-      if(dd.__calcU){try{localStorage.setItem('calc_uva',JSON.stringify(dd.__calcU));}catch(e){}}
-      if(dd.__plani){try{Object.assign(PLANI,dd.__plani);localStorage.setItem('planilla_data',JSON.stringify(PLANI));}catch(e){}}
-      // Merge datos de meses
-      const skipKeys=new Set(['__fijos','__verif','__debitos']);
-      const all=new Set([...Object.keys(dd).filter(k=>!k.startsWith('__ts_')&&!skipKeys.has(k)),...Object.keys(ST).filter(k=>!k.startsWith('__ts_'))]);
-      all.forEach(k=>{const tk=`__ts_${k}`;const lt=ST[tk]||0;const dt=dd[tk]||0;if(dt>lt){if(dd[k]!==undefined){ST[k]=dd[k];ST[tk]=dt;}}else if(!lt&&!dt){if(dd[k]!==undefined)ST[k]=dd[k];}});
-      Object.keys(ST).forEach(k=>{if(!k.startsWith('__ts_')){const p=k.split('_');if(p.length>=2)try{localStorage.setItem(lKey(p[0],p[1]),JSON.stringify(ST[k]));}catch(e){}}});
-      render();pulseSyncIcon();
-    }else{await dSaveAll();}
-  }catch(e){toast('⚠ Error al cargar desde Drive','#7F4F00');}
+    const f=await buscarArchivo();
+    let remoto=null,cambioLocal=false;
+    if(f){driveFileId=f.id;remoto=await gFetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`).then(r=>r.json());}
+    else driveFileId=null;
+    if(remoto)cambioLocal=combinarConDrive(remoto);
+    const backup=armarBackup(),body=JSON.stringify(backup);
+    if(!remoto||canon(backup)!==canon(remoto)){
+      if(!driveFileId){
+        const meta=await gFetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FNAME,mimeType:'application/json'})}).then(r=>r.json());
+        driveFileId=meta.id;
+      }
+      await gFetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body});
+    }
+    lastSync=new Date();try{localStorage.setItem('lastSync_v15',lastSync.toISOString());}catch(e){}
+    if(editGen===gen){PEND=false;try{localStorage.removeItem('sync_pendiente');}catch(e){}}
+    avisoVencido=false;
+    if(cambioLocal)render();
+    syncing=false;updateDriveBar();pulseSyncIcon();
+  }catch(e){
+    syncing=false;
+    if(e.status===401||e.status===403){
+      accessToken=null;tokenExp=0;
+      if(manual||!avisoVencido)toast('⚠ La sesión de Google Drive venció.\nTus cambios quedan guardados en este dispositivo. Tocá SYNC para reconectar.','#7F4F00');
+      avisoVencido=true;
+    }else toast('⚠ No se pudo sincronizar con Drive (¿sin internet?).\nTus cambios quedan guardados en este dispositivo y se suben en la próxima sincronización.','#7F4F00');
+    updateDriveBar();
+  }
+  if(syncOtraVez){syncOtraVez=false;sync();}
+  else if(editGen!==gen)dDebounce();
 }
 
 function initGA(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{
     window.tC=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,login_hint:driveHint||undefined,
-      callback:(r)=>{if(r.access_token){accessToken=r.access_token;driveReady=true;
+      callback:(r)=>{if(r.access_token){accessToken=r.access_token;tokenExp=Date.now()+(Number(r.expires_in)||3600)*1000;driveReady=true;
         if(!driveHint){fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{'Authorization':'Bearer '+r.access_token}}).then(res=>res.json()).then(info=>{if(info.email){driveHint=info.email;try{localStorage.setItem('drive_hint',info.email);}catch(e){}}}).catch(()=>{});}
-        dLoad();render();setTimeout(updateDriveBar,200);}}});
+        updateDriveBar();sync();}}});
     mostrarModalSync();
   };
   document.head.appendChild(s);
 }
-function cDrive(){if(window.tC)window.tC.requestAccessToken();}
+function cDrive(){if(window.tC)window.tC.requestAccessToken();else toast('⚠ No se pudo conectar con Google (¿sin internet?)','#7F4F00');}
+// Al volver a la app, trae los cambios hechos desde otro dispositivo
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&driveReady&&tokenValido()&&(!lastSync||Date.now()-lastSync>60000))sync();
+});
+
+// ===== Backup manual (archivo .json) =====
+function backupModal(){
+  const mc=document.getElementById('modal-container');
+  const n=monthKeys().filter(k=>!mesVacio(ST[k])).length;
+  mc.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
+    <div class="modal-title">💾 Backup</div>
+    <div class="modal-info">Descargá una copia de todos tus datos (${n} meses con datos). Sirve para guardarla aparte o para pasar los datos a otro dispositivo.</div>
+    <button class="btn1" id="bk-down" style="width:100%;padding:10px;margin-bottom:10px;">⬇ Descargar backup</button>
+    <div class="modal-info" style="border-top:2px solid #D9E1F2;padding-top:10px;">Restaurar reemplaza los datos de este dispositivo por los del archivo. Sirve también con el archivo de backup de Drive.</div>
+    <button class="btn2" id="bk-up" style="width:100%;padding:10px;margin-bottom:10px;">⬆ Restaurar desde archivo…</button>
+    <input type="file" id="bk-file" accept=".json,application/json" style="display:none"/>
+    <div class="modal-btns"><button class="btn2" onclick="closeModal()">Cerrar</button></div>
+  </div></div>`;
+  document.getElementById('bk-down').onclick=()=>{
+    const blob=new Blob([JSON.stringify(armarBackup())],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    const h=new Date();a.download=`control-gastos-backup-${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    closeModal();toast('✓ Backup descargado','#217346');
+  };
+  const inp=document.getElementById('bk-file');
+  document.getElementById('bk-up').onclick=()=>inp.click();
+  inp.onchange=()=>{
+    const file=inp.files&&inp.files[0];if(!file)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      let dd;try{dd=JSON.parse(rd.result);}catch(e){toast('⚠ El archivo no es un backup válido','#7F4F00');return;}
+      const meses=Object.keys(dd||{}).filter(k=>esMes(k)&&!mesVacio(dd[k]));
+      if(!dd||typeof dd!=='object'||!meses.length){toast('⚠ El archivo no tiene datos de gastos','#7F4F00');return;}
+      confirmarEliminar(`¿Restaurar el backup "${file.name}" (${meses.length} meses con datos)? Se reemplazan los datos de este dispositivo${driveReady?' y después se suben a Drive':''}.`,()=>restaurarBackup(dd),'Restaurar');
+    };
+    rd.readAsText(file);
+  };
+}
+function restaurarBackup(dd){
+  op(()=>{
+    new Set([...monthKeys(),...Object.keys(dd).filter(esMes)]).forEach(k=>{const[a,m]=k.split('_');ST[k]=dd[k]??null;lSave(a,m);});
+    Object.entries(SECC).forEach(([sec,[,aplicar]])=>{if(dd[sec]!==undefined){aplicar(dd[sec]);META[sec]=Date.now();}});
+    lsSet('gastos_meta_ts',META);marcarPendiente();
+    const extra={};Object.keys(dd).forEach(k=>{if(!esMes(k)&&!k.startsWith('__ts_')&&!SECC[k]&&k!=='__metats')extra[k]=dd[k];});
+    EXTRA=extra;lsSet('drive_extra',EXTRA);
+  });
+  render();toast('✓ Backup restaurado','#217346');
+}
 
 function mostrarModalSync(){
   const mc=document.getElementById('modal-container');
@@ -303,7 +507,7 @@ function dlCSV(){
 let tTimer=null;
 function toast(msg,bg='#1F3864'){
   const c=document.getElementById('toast-container');
-  c.innerHTML=`<div class="toast" style="background:${bg}">${msg}<div onclick="this.parentElement.parentElement.innerHTML=''" style="margin-top:4px;cursor:pointer;color:#CCC;font-size:10px;text-align:right">cerrar ×</div></div>`;
+  c.innerHTML=`<div class="toast" style="background:${bg}">${esc(msg)}<div onclick="this.parentElement.parentElement.innerHTML=''" style="margin-top:4px;cursor:pointer;color:#CCC;font-size:10px;text-align:right">cerrar ×</div></div>`;
   clearTimeout(tTimer);if(!bg.includes('7F'))tTimer=setTimeout(()=>{c.innerHTML='';},4000);
 }
 function pulseSyncIcon(){
@@ -320,7 +524,7 @@ function openModal(tipo,label,itemId,tarjetaId,cuotaTotal){
   const opts=ps.map((p,i)=>`<option value="${i}">${PL(p.anio,p.mes)}</option>`).join('');
   document.getElementById('modal-container').innerHTML=`
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
-      <div class="modal-title">Replicar: ${label}</div>
+      <div class="modal-title">Replicar: ${esc(label)}</div>
       ${esC?`<div class="modal-info">Se crearán <b>${cuotaTotal-1} cuota${cuotaTotal>2?'s':''}</b> en los períodos siguientes.</div>`
            :`<div class="modal-info">Desde <b>${PL(anio,mesIdx)}</b> hasta:</div><select id="hsel" class="modal-select">${opts}</select>`}
       <div class="modal-btns"><button class="btn2" onclick="closeModal()">Cancelar</button>
@@ -431,10 +635,10 @@ function editModal(label, val, onSave, tipo='text'){
   mc.innerHTML=`
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal-box">
-        <div class="modal-title">Editar: ${label}</div>
-        <input id="edit-modal-inp" type="${tipo==='number'?'number':'text'}" 
+        <div class="modal-title">Editar: ${esc(label)}</div>
+        <input id="edit-modal-inp" type="${tipo==='number'?'number':'text'}"
           style="width:100%;padding:10px;font-size:16px;font-family:'Roboto',sans-serif;font-weight:700;border:2px solid #1F3864;outline:none;text-transform:${tipo==='number'?'none':'uppercase'};"
-          value="${String(val||'').replace(/"/g,'&quot;')}"/>
+          value="${esc(val||'')}"/>
         <div class="modal-btns" style="margin-top:12px;">
           <button class="btn2" onclick="closeModal()">Cancelar</button>
           <button class="btn1" id="btn-edit-save">Guardar</button>
@@ -447,24 +651,26 @@ function editModal(label, val, onSave, tipo='text'){
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('btn-edit-save').click();}if(e.key==='Escape')closeModal();});
   document.getElementById('btn-edit-save').onclick=()=>{
     const nv=tipo==='number'?(inp.value===''?0:Number(inp.value)):inp.value.toUpperCase();
-    closeModal();onSave(nv);
+    closeModal();
+    if(tipo!=='number'&&nv===String(val||''))return; // sin cambios
+    onSave(nv);
   };
 }
 
 let _cb=null,_cm='';
-function confirmarEliminar(mensaje,onConfirm){
+function confirmarEliminar(mensaje,onConfirm,etiqueta){
   _cb=onConfirm;_cm=mensaje;
   document.getElementById('modal-container').innerHTML=`
     <div class="modal-overlay"><div class="modal-box">
       <div class="modal-title">⚠ Confirmar</div>
-      <div class="modal-info">${mensaje}</div>
+      <div class="modal-info">${esc(mensaje)}</div>
       <div class="modal-btns"><button class="btn2" id="bce">Cancelar</button><button class="btn1" id="bco">Confirmar</button></div>
     </div></div>`;
   document.getElementById('bce').onclick=()=>closeModal();
   const btn=document.getElementById('bco');
   const esTraer=_cm.startsWith('¿Traer');
-  btn.textContent=esTraer?'Confirmar':'Eliminar';
-  btn.style.background=esTraer?'#217346':'#C00000';
+  btn.textContent=etiqueta||(esTraer?'Confirmar':'Eliminar');
+  btn.style.background=(esTraer||etiqueta)?'#217346':'#C00000';
   btn.onclick=()=>{closeModal();if(_cb){_cb();_cb=null;}};
 }
 
@@ -472,7 +678,7 @@ async function confirmRep(tipo,itemId,tarjetaId,cuotaTotal,esC){
   closeModal();
   const ps=pSig(anio,mesIdx);
   const sel=esC?ps.slice(0,cuotaTotal-1):ps.slice(0,Number(document.getElementById('hsel')?.value||0)+1);
-  const{ok,conf}=await replic({tipo,periodos:sel,itemId:itemId||null,tarjetaId:tarjetaId||null});
+  const{ok,conf}=op(()=>replic({tipo,periodos:sel,itemId:itemId||null,tarjetaId:tarjetaId||null}));
   let msg=ok>0?`✓ Replicado en ${ok} período${ok>1?'s':''}`:''
   conf.forEach(c=>{msg+='\n⚠ '+c;});
   toast(msg||'Sin cambios',conf.length>0?'#7F4F00':'#1F3864');
@@ -507,7 +713,8 @@ function mkFecha(val,onChange,celda){
     inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
     div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
     let hecho=false;
-    const commit=()=>{if(hecho)return;hecho=true;const r=parseFecha(inp.value);if(!r.ok&&inp.value.trim()){inp.style.background='#FFE0E0';inp.style.color='#C00000';setTimeout(()=>{val='';onChange('');refresh();},1200);return;}val=r.val;onChange(r.val);refresh();};
+    // Fecha mal escrita: avisa y deja la fecha que estaba (no la borra)
+    const commit=()=>{if(hecho)return;hecho=true;const r=parseFecha(inp.value);if(!r.ok&&inp.value.trim()){inp.style.background='#FFE0E0';inp.style.color='#C00000';toast('⚠ Fecha inválida: usá dd/mm (ej. 05/11)','#7F4F00');setTimeout(()=>{refresh();},1200);return;}if(r.val===(val||'')){refresh();return;}val=r.val;onChange(r.val);refresh();};
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape'){hecho=true;div.innerHTML='';refresh();}});
   });
@@ -530,7 +737,9 @@ function mkCell(val,onChange,opts={}){
       inp.style.cssText="width:100%;border:none;outline:none;background:#FFF9C4;font-size:13px;padding:0 5px;height:30px;";
       div.appendChild(inp);setTimeout(()=>{inp.focus();inp.select();},50);
       let yaGuardado=false;
-      inp.addEventListener('blur',()=>{if(yaGuardado)return;yaGuardado=true;const nv=inp.value===''?0:Number(inp.value);onChange(nv);});
+      inp.addEventListener('blur',()=>{if(yaGuardado)return;yaGuardado=true;const nv=inp.value===''?0:Number(inp.value);
+        if(nv===(Number(val)||0)){div.textContent=display||'';return;} // sin cambios: no guarda ni ensucia el "deshacer"
+        onChange(nv);});
       inp.addEventListener('keydown',e=>{
         if(e.key==='Enter'){e.preventDefault();inp.blur();setTimeout(()=>{const all=[...document.querySelectorAll('[data-celda]')];const cur=all.findIndex(el=>el.dataset.celda===celda);if(cur!==-1&&cur+1<all.length)all[cur+1].click();},30);}
         if(e.key==='Escape'){yaGuardado=true;render();}
@@ -579,20 +788,49 @@ const uF=(i,f,v)=>sM(m=>{const a=[...m.fijos];a[i]={...a[i],[f]:v};return{...m,f
 const uE=(i,f,v)=>sM(m=>{const a=[...m.extras];a[i]={...a[i],[f]:v};return{...m,extras:a};});
 const uT=(ti,f,v)=>{
   if(f==="_d"){
-    const mes=gM();const t=mes.tarjetas[ti];
-    if(t)eliminarTarjetaDesdeAqui(t.id,mesIdx,anio);
-    sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));
+    op(()=>{
+      const mes=gM();const t=mes.tarjetas[ti];
+      if(t)eliminarTarjetaDesdeAqui(t.id,mesIdx,anio);
+      sM(m=>({...m,tarjetas:m.tarjetas.filter((_,j)=>j!==ti)}));
+    });
   }
   else sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],[f]:v};return{...m,tarjetas:a};});
 };
 const uG=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];gs[gi]={...gs[gi],[f]:v};if(f==='cuotaTotal')gs[gi].cuotaNum=1;a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});
-// Replicar cuotas automáticamente cuando se carga cuotaTotal > 1
-async function autoReplicarCuotas(ti,gi){
-  const mes=gM();const t=mes.tarjetas[ti];const g=t.gastos[gi];
-  if(!g||Number(g.cuotaTotal)<=1)return;
-  const ps=pSig(anio,mesIdx).slice(0,Number(g.cuotaTotal)-1);
-  await replic({tipo:'tarjetaGasto',periodos:ps,itemId:g.id,tarjetaId:t.id});
-  toast(`✓ ${g.cuotaTotal} cuotas creadas automáticamente`,'#217346');
+// Cambia la cantidad de cuotas de una compra: borra las cuotas generadas antes y las vuelve a crear
+function cambiarCuotas(ti,gi,nv){
+  const t=gM().tarjetas[ti],g=t?.gastos?.[gi];if(!g)return;
+  if(nv===(Number(g.cuotaTotal)||1))return;
+  let res=null;
+  op(()=>{
+    eliminarPropagadas(t.id,g.id,mesIdx,anio);
+    uG(ti,gi,'cuotaTotal',nv);
+    if(nv>1)res=replic({tipo:'tarjetaGasto',periodos:pSig(anio,mesIdx,nv-1),itemId:g.id,tarjetaId:t.id});
+  });
+  if(res){
+    let msg=`✓ Compra en ${nv} cuotas: ${res.ok} cuota${res.ok!==1?'s':''} creada${res.ok!==1?'s':''} en los meses siguientes`;
+    res.conf.forEach(c=>{msg+='\n⚠ '+c;});
+    toast(msg,res.conf.length?'#7F4F00':'#217346');
+  }else if(nv===1)toast('✓ Compra en 1 pago: se quitaron las cuotas de los meses siguientes','#217346');
+}
+// Cambia concepto o importe de la cuota 1 y lo aplica a las cuotas siguientes
+// (el importe sólo se cambia en las cuotas que no editaste a mano)
+function uGOrigen(ti,gi,f,v){
+  const t=gM().tarjetas[ti],g=t?.gastos?.[gi];if(!g)return;
+  const viejo=g[f];if(v===viejo)return;
+  op(()=>{
+    pSig(anio,mesIdx,Math.max(1,(Number(g.cuotaTotal)||1)-1)).forEach(({anio:a,mes:m})=>{
+      const d=gST(a,m);if(!d)return;
+      let mod=false;
+      (d.tarjetas||[]).forEach(tt=>{(tt.gastos||[]).forEach(x=>{
+        if(x.cuotaOrigen!==g.id)return;
+        if(f==='concepto'){x.concepto=v;mod=true;}
+        else if(Number(x.importe)===Number(viejo)){x.importe=v;mod=true;}
+      });});
+      if(mod)lSave(a,m);
+    });
+    uG(ti,gi,f,v);
+  });
 }
 const addG=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:[...(a[ti].gastos||[]),{id:uid(),concepto:'',importe:0,cuotaTotal:1,cuotaNum:1,cuotaOrigen:null}]};return{...m,tarjetas:a};});
 const addGUSD=(ti)=>sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastosUSD:[...(a[ti].gastosUSD||[]),{id:uid(),concepto:'',importe:0}]};return{...m,tarjetas:a};});
@@ -600,7 +838,8 @@ const uGUSD=(ti,gi,f,v)=>sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastosUSD|
 
 function pSig(a,m,c=36){const r=[];for(let i=1;i<=c;i++){const t=m+i;r.push({anio:a+Math.floor(t/12),mes:t%12});}return r;}
 
-async function replic({tipo,periodos,itemId,tarjetaId}){
+function replic({tipo,periodos,itemId,tarjetaId}){
+  pushHistory();
   const o=gM();let payload,tarjetaNombre=null;
   if(tipo==="sueldo")payload=o.sueldo;
   else if(tipo==="sueldoBruto")payload=o.sueldoBruto;
@@ -612,7 +851,7 @@ async function replic({tipo,periodos,itemId,tarjetaId}){
   const conf=[];let ok=0;
   for(let i=0;i<periodos.length;i++){
     const{anio:a,mes:m}=periodos[i];if(!gST(a,m))lLoad(a,m);
-    let d=gST(a,m)??MV();let mod=false;const lb=PL(a,m);
+    let d=gST(a,m)??nuevoMes(a,m);let mod=false;const lb=PL(a,m);
     if(tipo==="sueldo"){if(d.sueldo!==0&&d.sueldo!==payload)conf.push(`${lb}: Sueldo ya tiene $${fmt(d.sueldo)}`);else{d.sueldo=payload;mod=true;}}
     else if(tipo==="sueldoBruto"){const actual=Number(d.sueldoBruto)||0;if(actual!==0&&actual!==payload)conf.push(`${lb}: Bruto ya tiene $${fmt(actual)}`);else{d.sueldoBruto=payload;mod=true;}}
     else if(tipo==="sueldoAmbos"){
@@ -635,8 +874,8 @@ async function replic({tipo,periodos,itemId,tarjetaId}){
   if(driveReady)dDebounce();return{ok,conf};
 }
 
-async function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
-  for(let i=1;i<=36;i++){
+function eliminarPropagadas(tarjetaId,origenId,desdeMes,desdeAnio){
+  for(let i=1;i<=120;i++){
     let nm=desdeMes+i,na=desdeAnio;if(nm>11){na+=Math.floor(nm/12);nm=nm%12;}
     if(!gST(na,nm))lLoad(na,nm);const d=gST(na,nm);if(!d)continue;
     const ti=d.tarjetas?.findIndex(t=>t.id===tarjetaId)??-1;if(ti===-1)continue;
@@ -660,7 +899,7 @@ function vencPrestamo(a,m,dia){
   const d=Math.min(Math.max(1,Math.round(Number(dia))||1),ult);
   return `${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`;
 }
-function guardarMesPrestamo(a,m,d){sST(a,m,d);ST[`__ts_${a}_${m}`]=Date.now();lSave(a,m);}
+function guardarMesPrestamo(a,m,d){sST(a,m,d);lSave(a,m);}
 // Aplica campos descriptivos (otorgante, descripción, monto, tipo) a este préstamo en los meses siguientes
 function propagarPrestamo(id,campos,desdeMes,desdeAnio){
   for(let i=1;i<=120;i++){
@@ -675,8 +914,10 @@ function propagarPrestamo(id,campos,desdeMes,desdeAnio){
 }
 const uPD=(pi,campos)=>{
   const p=PR(gM())[pi];if(!p)return;
-  propagarPrestamo(p.id,campos,mesIdx,anio);
-  sM(m=>{const a=[...PR(m)];a[pi]={...a[pi],...campos};return{...m,prestamos:a};});
+  op(()=>{
+    propagarPrestamo(p.id,campos,mesIdx,anio);
+    sM(m=>{const a=[...PR(m)];a[pi]={...a[pi],...campos};return{...m,prestamos:a};});
+  });
 };
 // Borra el préstamo de los meses siguientes
 function eliminarPrestamoDesdeAqui(id,desdeMes,desdeAnio){
@@ -692,16 +933,19 @@ function eliminarPrestamoDesdeAqui(id,desdeMes,desdeAnio){
 }
 const delP=pi=>{
   const p=PR(gM())[pi];if(!p)return;
-  eliminarPrestamoDesdeAqui(p.id,mesIdx,anio);
-  sM(m=>({...m,prestamos:PR(m).filter((_,j)=>j!==pi)}));
+  op(()=>{
+    eliminarPrestamoDesdeAqui(p.id,mesIdx,anio);
+    sM(m=>({...m,prestamos:PR(m).filter((_,j)=>j!==pi)}));
+  });
 };
 // Crea el préstamo en el mes actual y genera las cuotas restantes en los meses siguientes
-function crearPrestamo({otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,dia}){
+function crearPrestamo(datos){op(()=>crearPrestamo_(datos));}
+function crearPrestamo_({otorgante,descripcion,monto,uva,cuotaTotal,cuotaNum,importe,dia}){
   const base={id:uid(),otorgante,descripcion,monto,uva,cuotaTotal};
   for(let k=1;k<=cuotaTotal-cuotaNum;k++){
     const p=mesMasN(anio,mesIdx,k);
     if(!gST(p.anio,p.mes))lLoad(p.anio,p.mes);
-    const d=gST(p.anio,p.mes)??MV();
+    const d=gST(p.anio,p.mes)??nuevoMes(p.anio,p.mes);
     d.prestamos=[...PR(d),{...base,cuotaNum:cuotaNum+k,importe,venc:vencPrestamo(p.anio,p.mes,dia),fpago:''}];
     guardarMesPrestamo(p.anio,p.mes,d);
   }
@@ -752,11 +996,12 @@ function prestamoModal(){
   };
 }
 
-async function eliminarTarjetaDesdeAqui(tarjetaId,desdeMes,desdeAnio){
-  for(let i=1;i<=36;i++){
+// Sólo toca los meses que ya existen (antes creaba meses vacíos a futuro)
+function eliminarTarjetaDesdeAqui(tarjetaId,desdeMes,desdeAnio){
+  for(let i=1;i<=120;i++){
     let nm=desdeMes+i,na=desdeAnio;if(nm>11){na+=Math.floor(nm/12);nm=nm%12;}
     if(!gST(na,nm))lLoad(na,nm);
-    let d=gST(na,nm)??MV();
+    const d=gST(na,nm);if(!d||!Array.isArray(d.tarjetas))continue;
     const antes=d.tarjetas.length;
     d.tarjetas=d.tarjetas.filter(t=>t.id!==tarjetaId);
     if(d.tarjetas.length!==antes){sST(na,nm,d);lSave(na,nm);}
@@ -787,7 +1032,7 @@ function traerFijosAnteriores(seccion){
 
 function traerFijosTarjeta(tarjetaId){
   let ma=mesIdx-1,aa=anio;if(ma<0){ma=11;aa=anio-1;}
-  confirmarEliminar(`¿Traer fijos de ${PL(aa,ma)} a ${PL(anio,mesIdx)}?`,()=>{
+  confirmarEliminar(`¿Traer fijos de ${PL(aa,ma)} a ${PL(anio,mesIdx)}?`,()=>op(()=>{
     if(!gST(aa,ma))lLoad(aa,ma);const anterior=gST(aa,ma);
     if(!anterior){toast('⚠ No hay datos en el mes anterior','#7F4F00');return;}
     const tarjetas=[...gM().tarjetas];const ti=tarjetas.findIndex(t=>t.id===tarjetaId);if(ti===-1)return;
@@ -802,7 +1047,7 @@ function traerFijosTarjeta(tarjetaId){
     });
     if(traidos>0){sM(m=>({...m,tarjetas}));toast('✓ Fijos traídos','#217346');}
     else toast('No hay fijos nuevos para traer','#1F3864');
-  });
+  }));
 }
 
 function renderAhorros(){
@@ -842,7 +1087,7 @@ function renderAhorros(){
   btnD.onclick=()=>{
     const cap=parseFloat(document.getElementById('d-capital').value)||0;
     const tna=parseFloat(document.getElementById('d-tna').value)||0;
-    try{localStorage.setItem('calc_diario',JSON.stringify({cap,tna}));}catch(e){}
+    {const prev=lsGet('calc_diario',{});if(prev.cap!==cap||prev.tna!==tna){lsSet('calc_diario',{cap,tna});stampSec('__calcD');}}
     if(!cap||!tna){resD.style.display='none';return;}
     const td=Math.pow(1+tna/100,1/365)-1;
     const c7=cap*Math.pow(1+td,7),c30=cap*Math.pow(1+td,30),c365=cap*Math.pow(1+td,365);
@@ -907,7 +1152,7 @@ function renderAhorros(){
     const tna=parseFloat(document.getElementById('u-tna').value)/100;
     const uvaVal=parseFloat(document.getElementById('u-uva').value);
     const ipc=parseFloat(document.getElementById('u-ipc').value)/100;
-    try{localStorage.setItem('calc_uva',JSON.stringify({monto,tna:tna*100,uva:uvaVal,ipc:ipc*100}));}catch(e){}
+    {const nu={monto,tna:tna*100,uva:uvaVal,ipc:ipc*100};if(canon(lsGet('calc_uva',{}))!==canon(nu)){lsSet('calc_uva',nu);stampSec('__calcU');}}
     if(!monto||!tna||!uvaVal)return;
     const capUVA=monto/uvaVal,tm=tna/12,tea=(Math.pow(1+tm,12)-1)*100;
     const fmt2=n=>'$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1201,7 +1446,7 @@ function renderTarjetas(){
   MESES.forEach((_,m)=>{
     if(!gST(anioAnual,m))lLoad(anioAnual,m);
     const d=gST(anioAnual,m);
-    if(!d){datos.push(null);return;}
+    if(mesVacio(d)){datos.push(null);return;}
     const fila={};
     (d.tarjetas||[]).forEach(t=>{
       const label=(t.nombre||'').trim()||'(SIN NOMBRE)',key=label.toUpperCase();
@@ -1287,7 +1532,7 @@ function renderAnual(){
     if(!gST(anioAnual,m))lLoad(anioAnual,m);const d=gST(anioAnual,m);const rbg=m%2===0?'white':'#F5F5F5';
     const pct=getAumento(anioAnual,m);
     const aumNode=pct?valD(`${pct}%`,{bold:true,color:'#375623'}):valD('—',{color:'#CCC'});
-    if(!d){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:60,bg:rbg,node:aumNode},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
+    if(mesVacio(d)){bl.appendChild(mkRow([{w:110,bg:rbg,node:(()=>{const dv=E('div','lbl');dv.style.color='#999';dv.textContent=mes;return dv;})()},{w:60,bg:rbg,node:aumNode},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})},{w:120,bg:rbg,node:valD('—',{color:'#CCC'})}]));return;}
     const tE=(d.extras||[]).reduce((s,e)=>s+(Number(e.importe)||0),0);
     const tT2=(d.tarjetas||[]).reduce((s,t)=>s+((t.gastos||[]).reduce((ss,g)=>ss+(Number(g.importe)||0),0)),0);
     const tF=(d.fijos||[]).reduce((s,f)=>s+(Number(f.importe)||0),0);
@@ -1492,14 +1737,17 @@ function render(){
           {w:26,bg:debito?'#217346':'transparent',node:btnDA},
           {w:24,bg:rbg,node:E('div')},
           {w:24,bg:rbg,node:chkG},
-          {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
-          {w:90,bg:rbg,node:mkCell(g.importe,v=>uG(ti,gi,'importe',Number(v)||0),{type:'number',color:prop?'#A07050':undefined,celda:`tg${ti}-${gi}i`})},
-          {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>{const nv=Math.max(1,Number(v)||1);uG(ti,gi,'cuotaTotal',nv);if(nv>1)setTimeout(()=>autoReplicarCuotas(ti,gi),300);},{type:'number',celda:`tg${ti}-${gi}ct`})},
+          {w:160,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.cssText='font-style:italic;color:#A07050;cursor:default;';d.textContent=g.concepto;return d;})():mkCell(g.concepto,v=>esC?uGOrigen(ti,gi,'concepto',v):uG(ti,gi,'concepto',v),{celda:`tg${ti}-${gi}c`})},
+          {w:90,bg:rbg,node:mkCell(g.importe,v=>(esC&&!prop)?uGOrigen(ti,gi,'importe',Number(v)||0):uG(ti,gi,'importe',Number(v)||0),{type:'number',color:prop?'#A07050':undefined,celda:`tg${ti}-${gi}i`})},
+          {w:58,bg:rbg,node:prop?(()=>{const d=E('div','cv');d.style.color='#A07050';d.textContent=g.cuotaTotal;return d;})():mkCell(g.cuotaTotal||1,v=>{const nv=Math.max(1,Math.round(Number(v))||1);cambiarCuotas(ti,gi,nv);},{type:'number',celda:`tg${ti}-${gi}ct`})},
           {w:48,bg:rbg,node:(()=>{const d=E('div','cv');d.style.cssText=`justify-content:center;color:${esUltimaCuota?'#B45309':esC?'#833C00':'#AAA'};font-weight:${esC?700:400};cursor:default;`;d.textContent=esC?`${g.cuotaNum}/${g.cuotaTotal}`:'–';return d;})()},
           {w:26,bg:rbg,node:(!prop&&Number(g.cuotaTotal)<=1)?repB(()=>openModal('tarjetaGasto',`${g.concepto||'(SIN NOMBRE)'}`,g.id,t.id,1)):E('div')},
-          {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto'}"?`+((!prop&&g.cuotaTotal>1)?' Se eliminarán las cuotas siguientes.':''),async()=>{
-            sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
-            if(!prop&&g.cuotaTotal>1&&g.id){await eliminarPropagadas(t.id,g.id,mesIdx,anio);toast('✓ Cuotas eliminadas','#217346');}
+          {w:26,bg:rbg,node:delB(()=>confirmarEliminar(`¿Eliminar "${g.concepto||'este gasto'}"?`+((!prop&&g.cuotaTotal>1)?' Se eliminarán las cuotas siguientes.':''),()=>{
+            op(()=>{
+              if(!prop&&g.cuotaTotal>1&&g.id)eliminarPropagadas(t.id,g.id,mesIdx,anio);
+              sM(m=>{const a=[...m.tarjetas];a[ti]={...a[ti],gastos:(a[ti].gastos||[]).filter((_,j)=>j!==gi)};return{...m,tarjetas:a};});
+            });
+            if(!prop&&g.cuotaTotal>1&&g.id)toast('✓ Cuotas eliminadas','#217346');
           }))},
           {w:44,bg:rbg,node:mkOrdCol(
             ()=>{if(gi>0)sM(m=>{const a=[...m.tarjetas],gs=[...(a[ti].gastos||[])];[gs[gi-1],gs[gi]]=[gs[gi],gs[gi-1]];a[ti]={...a[ti],gastos:gs};return{...m,tarjetas:a};});},
@@ -1558,7 +1806,7 @@ function render(){
             const opts=ps.map((p,i)=>`<option value="${i}">${PL(p.anio,p.mes)}</option>`).join('');
             const mc=document.getElementById('modal-container');
             mc.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-box">
-              <div class="modal-title">Replicar USD: ${g.concepto||'(SIN NOMBRE)'}</div>
+              <div class="modal-title">Replicar USD: ${esc(g.concepto||'(SIN NOMBRE)')}</div>
               <div class="modal-info">Desde <b>${PL(anio,mesIdx)}</b> hasta:</div>
               <select id="hsel-usd" class="modal-select">${opts}</select>
               <div class="modal-btns">
@@ -1570,10 +1818,10 @@ function render(){
               const selVal=Number(document.getElementById('hsel-usd')?.value||0);
               closeModal();
               const sel=ps.slice(0,selVal+1);
-              let ok=0;
+              let ok=0;pushHistory();
               sel.forEach(({anio:a,mes:m})=>{
                 if(!gST(a,m))lLoad(a,m);
-                const d=gST(a,m)??MV();
+                const d=gST(a,m)??nuevoMes(a,m);
                 const ti2=d.tarjetas.findIndex(t2=>t2.id===tarjetaId);
                 if(ti2!==-1){
                   if(!d.tarjetas[ti2].gastosUSD)d.tarjetas[ti2].gastosUSD=[];
@@ -1652,9 +1900,14 @@ function render(){
   tbl.appendChild(addB('+ Agregar préstamo','#0B5345','#EAF7F3',prestamoModal));
 }
 
+lLoadAll();
 lLoad(anio,mesIdx);
 initGA();
 render();
+// App instalable / uso sin internet (sólo funciona cuando la planilla se abre desde https)
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
 </script>
 </body>
 </html>
